@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VéloVerse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#080810;--bg2:#0f0f1a;--bg3:#161625;--card:#13131f;--card2:#1a1a2e;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.2);
+  --acc:#c8ff57;--acc2:#57c8ff;--acc3:#ff7043;--acc4:#b57bff;
+  --txt:#eeeef8;--muted:#7070a0;--muted2:#404060;
+  --mtb:#ff7043;--road:#57c8ff;--gravel:#b57bff;--ebike:#c8ff57;--urban:#ffd166;
+  --good:#22c55e;--ok:#fbbf24;--bad:#ef4444;
+  --font-d:'Syne',sans-serif;--font-b:'Outfit',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --r:14px;--r2:20px;--trans:all .25s cubic-bezier(.4,0,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--txt);font-family:var(--font-b);font-size:15px;line-height:1.6;overflow-x:hidden;min-height:100vh;}
+
+/* ===== SPLASH SCREEN ===== */
+#splash{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2rem;}
+.splash-logo{font-family:var(--font-d);font-size:clamp(2.5rem,8vw,5rem);font-weight:800;letter-spacing:-2px;animation:splashIn 1s ease both;}
+.splash-logo .acc{color:var(--acc);}
+.splash-subtitle{color:var(--muted);font-size:1rem;animation:splashIn 1s .2s ease both;text-align:center;}
+.splash-loader{width:200px;height:2px;background:var(--bg3);border-radius:2px;overflow:hidden;animation:splashIn 1s .4s ease both;}
+.splash-loader-bar{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:2px;animation:load 2.2s ease forwards;}
+.splash-wheel{font-size:4rem;animation:splashIn .8s ease both,wheelSpin 1.5s linear infinite;}
+@keyframes splashIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:none;}}
+@keyframes load{from{width:0}to{width:100%}}
+@keyframes wheelSpin{to{transform:rotate(360deg);}}
+#splash.hide{animation:splashOut .6s ease forwards;}
+@keyframes splashOut{to{opacity:0;pointer-events:none;}}
+
+/* ===== ONBOARDING ===== */
+#onboarding{position:fixed;inset:0;z-index:9000;background:var(--bg);display:none;overflow-y:auto;}
+.ob-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
+.ob-card{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);max-width:520px;width:100%;padding:2.5rem;animation:splashIn .5s ease both;}
+.ob-step{display:none;}
+.ob-step.active{display:block;}
+.ob-num{font-family:var(--font-m);font-size:.75rem;color:var(--muted);letter-spacing:2px;margin-bottom:.75rem;}
+.ob-title{font-family:var(--font-d);font-size:1.8rem;font-weight:700;line-height:1.2;margin-bottom:.5rem;}
+.ob-sub{color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;}
+.ob-progress{display:flex;gap:.4rem;margin-bottom:2rem;}
+.ob-dot{flex:1;height:3px;background:var(--bg3);border-radius:2px;transition:background .3s;}
+.ob-dot.done{background:var(--acc);}
+.ob-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.75rem;margin-bottom:1.5rem;}
+.ob-opt{background:var(--bg2);border:2px solid var(--border);border-radius:var(--r);padding:1rem;cursor:pointer;transition:var(--trans);text-align:center;}
+.ob-opt:hover{border-color:var(--border3);background:var(--bg3);}
+.ob-opt.sel{border-color:var(--acc);background:rgba(200,255,87,.08);}
+.ob-opt-icon{font-size:2rem;margin-bottom:.4rem;}
+.ob-opt-label{font-size:.82rem;font-weight:500;}
+.ob-input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:.75rem 1rem;color:var(--txt);font-family:var(--font-b);font-size:.9rem;outline:none;margin-bottom:1rem;transition:border-color .2s;}
+.ob-input:focus{border-color:var(--acc);}
+.btn-acc{display:inline-flex;align-items:center;gap:.5rem;background:var(--acc);color:#080810;border:none;border-radius:var(--r);padding:.75rem 1.8rem;font-weight:700;font-size:.9rem;cursor:pointer;font-family:var(--font-b);transition:var(--trans);}
+.btn-acc:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(200,255,87,.3);}
+.btn-ghost{display:inline-flex;align-items:center;gap:.5rem;background:transparent;color:var(--muted);border:1px solid var(--border2);border-radius:var(--r);padding:.7rem 1.4rem;font-size:.88rem;cursor:pointer;font-family:var(--font-b);transition:var(--trans);}
+.btn-ghost:hover{color:var(--txt);border-color:var(--border3);}
+
+/* ===== MAIN APP ===== */
+#app{display:none;}
+
+/* NAV */
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:800;background:rgba(8,8,16,.92);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding:.6rem 0 .8rem;transition:transform .3s;}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:.25rem;cursor:pointer;padding:.2rem .6rem;transition:var(--trans);}
+.nav-item .ni{font-size:1.3rem;transition:transform .2s;}
+.nav-item .nl{font-size:.62rem;font-weight:500;color:var(--muted);transition:color .2s;letter-spacing:.5px;}
+.nav-item.active .ni{transform:scale(1.15);}
+.nav-item.active .nl{color:var(--acc);}
+/* top bar */
+.topbar{position:sticky;top:0;z-index:700;background:rgba(8,8,16,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.2rem;}
+.topbar-logo{font-family:var(--font-d);font-size:1.3rem;font-weight:800;color:var(--acc);}
+.topbar-actions{display:flex;gap:.5rem;}
+.icon-btn{background:var(--bg3);border:1px solid var(--border);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;transition:var(--trans);}
+.icon-btn:hover{border-color:var(--border3);}
+
+/* PAGES */
+.page{display:none;padding-bottom:80px;min-height:100vh;}
+.page.active{display:block;animation:pageIn .35s ease both;}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/* ===== HOME ===== */
+.home-hero{position:relative;overflow:hidden;padding:1.5rem 1.2rem 2rem;}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 70% 0%,rgba(200,255,87,.08) 0%,transparent 60%),radial-gradient(ellipse at 20% 100%,rgba(87,200,255,.06) 0%,transparent 60%);}
+.hero-greeting{font-size:.9rem;color:var(--muted);margin-bottom:.3rem;}
+.hero-name{font-family:var(--font-d);font-size:clamp(1.6rem,5vw,2.4rem);font-weight:800;line-height:1.1;margin-bottom:.5rem;}
+.hero-name .acc{color:var(--acc);}
+.hero-weather-pill{display:inline-flex;align-items:center;gap:.6rem;background:var(--card);border:1px solid var(--border2);border-radius:50px;padding:.45rem 1rem;font-size:.82rem;cursor:pointer;transition:var(--trans);margin-bottom:1.5rem;}
+.hero-weather-pill:hover{border-color:var(--acc);}
+.w-temp-pill{font-family:var(--font-m);font-weight:500;}
+.quick-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem;}
+.qs-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.9rem;position:relative;overflow:hidden;}
+.qs-card::after{content:'';position:absolute;inset:0;border-radius:var(--r);opacity:0;background:radial-gradient(circle at 50% 0%,var(--c,#fff) 0%,transparent 70%);transition:opacity .3s;}
+.qs-card:hover::after{opacity:.04;}
+.qs-num{font-family:var(--font-d);font-size:1.6rem;font-weight:800;color:var(--acc);}
+.qs-label{font-size:.7rem;color:var(--muted);margin-top:.15rem;line-height:1.3;}
+.section-hd{display:flex;align-items:center;justify-content:space-between;padding:0 1.2rem;margin-bottom:.8rem;}
+.section-title{font-family:var(--font-d);font-size:1.15rem;font-weight:700;}
+.section-more{font-size:.78rem;color:var(--acc);cursor:pointer;}
+.h-scroll{display:flex;gap:.75rem;overflow-x:auto;padding:0 1.2rem .5rem;scrollbar-width:none;}
+.h-scroll::-webkit-scrollbar{display:none;}
+
+/* ACTIVITY CARD */
+.act-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.1rem;min-width:180px;cursor:pointer;transition:var(--trans);position:relative;overflow:hidden;}
+.act-card:hover{transform:translateY(-3px);border-color:var(--border2);}
+.act-card-icon{font-size:2.2rem;margin-bottom:.5rem;}
+.act-card-name{font-weight:600;font-size:.9rem;}
+.act-card-sub{font-size:.75rem;color:var(--muted);margin-top:.15rem;}
+.act-card-cond{position:absolute;top:.7rem;right:.7rem;width:8px;height:8px;border-radius:50%;}
+
+/* WEATHER FULL */
+.weather-hero{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);margin:0 1.2rem 1rem;overflow:hidden;}
+.wh-top{padding:1.2rem;display:flex;align-items:center;justify-content:space-between;}
+.wh-left{}
+.wh-icon{font-size:3.5rem;line-height:1;}
+.wh-temp{font-family:var(--font-d);font-size:3.2rem;font-weight:800;color:var(--txt);line-height:1;}
+.wh-desc{font-size:.85rem;color:var(--muted);margin-top:.2rem;}
+.wh-loc{font-size:.78rem;color:var(--muted2);margin-top:.1rem;}
+.wh-right{text-align:right;}
+.wh-right .wr-row{font-size:.82rem;color:var(--muted);margin-bottom:.3rem;}
+.wh-right .wr-val{color:var(--txt);font-weight:500;}
+.wh-conditions{padding:.9rem 1.2rem;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;}
+.wc-item{background:var(--bg2);border-radius:var(--r);padding:.75rem;}
+.wc-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.2rem;}
+.wc-val{font-size:1rem;font-weight:600;}
+.wc-bar{height:4px;border-radius:2px;background:var(--bg3);margin-top:.4rem;overflow:hidden;}
+.wc-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+
+/* BIKE CONDITIONS TABLE */
+.bike-cond-table{margin:0 1.2rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;}
+.bct-header{padding:.9rem 1.1rem;border-bottom:1px solid var(--border);font-family:var(--font-d);font-size:1rem;font-weight:700;}
+.bct-row{display:flex;align-items:center;gap:.75rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--border);transition:background .2s;cursor:pointer;}
+.bct-row:last-child{border-bottom:none;}
+.bct-row:hover{background:var(--bg3);}
+.bct-icon{font-size:1.5rem;flex-shrink:0;width:36px;}
+.bct-info{flex:1;}
+.bct-name{font-weight:600;font-size:.88rem;}
+.bct-reason{font-size:.75rem;color:var(--muted);margin-top:.1rem;}
+.bct-badge{display:flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:700;padding:.3rem .7rem;border-radius:50px;}
+.cond-good{background:rgba(34,197,94,.12);color:var(--good);}
+.cond-ok{background:rgba(251,191,36,.12);color:var(--ok);}
+.cond-bad{background:rgba(239,68,68,.12);color:var(--bad);}
+.cond-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+/* WIND INDICATOR */
+.wind-compass{width:80px;height:80px;position:relative;margin:.5rem auto;}
+.wind-circle{width:80px;height:80px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;position:relative;}
+.wind-arrow{position:absolute;width:3px;height:28px;background:var(--acc3);border-radius:2px;transform-origin:bottom center;bottom:50%;left:50%;margin-left:-1.5px;}
+.wind-n{position:absolute;font-size:.55rem;color:var(--muted);top:4px;left:50%;transform:translateX(-50%);}
+.wind-s{position:absolute;font-size:.55rem;color:var(--muted);bottom:4px;left:50%;transform:translateX(-50%);}
+.wind-e{position:absolute;font-size:.55rem;color:var(--muted);right:5px;top:50%;transform:translateY(-50%);}
+.wind-w{position:absolute;font-size:.55rem;color:var(--muted);left:5px;top:50%;transform:translateY(-50%);}
+
+/* HOURLY FORECAST */
+.hourly-scroll{display:flex;gap:.5rem;overflow-x:auto;padding:0 1.2rem .5rem;scrollbar-width:none;margin-bottom:1rem;}
+.hourly-scroll::-webkit-scrollbar{display:none;}
+.h-hour{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .7rem;text-align:center;min-width:56px;transition:var(--trans);}
+.h-hour.active{border-color:var(--acc);background:rgba(200,255,87,.06);}
+.h-hour .hh-time{font-size:.65rem;color:var(--muted);}
+.h-hour .hh-icon{font-size:1.1rem;margin:.2rem 0;}
+.h-hour .hh-temp{font-size:.78rem;font-weight:600;font-family:var(--font-m);}
+.h-hour .hh-wind{font-size:.62rem;color:var(--muted);}
+
+/* ===== BIKES PAGE ===== */
+.bikes-header{padding:1.2rem 1.2rem .5rem;}
+.search-row{display:flex;gap:.6rem;margin-bottom:.75rem;}
+.search-wrap{flex:1;position:relative;}
+.search-wrap input{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:.65rem .75rem .65rem 2.3rem;color:var(--txt);font-family:var(--font-b);font-size:.88rem;outline:none;transition:border-color .2s;}
+.search-wrap input:focus{border-color:var(--acc);}
+.search-wrap .si{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
+.filter-chips{display:flex;gap:.4rem;overflow-x:auto;padding-bottom:.3rem;scrollbar-width:none;margin-bottom:.75rem;}
+.filter-chips::-webkit-scrollbar{display:none;}
+.chip{background:var(--card);border:1.5px solid var(--border);border-radius:50px;padding:.35rem .85rem;font-size:.78rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:var(--trans);color:var(--muted);}
+.chip:hover{color:var(--txt);border-color:var(--border2);}
+.chip.ch-mtb.on{background:rgba(255,112,67,.1);border-color:var(--mtb);color:var(--mtb);}
+.chip.ch-road.on{background:rgba(87,200,255,.1);border-color:var(--road);color:var(--road);}
+.chip.ch-gravel.on{background:rgba(181,123,255,.1);border-color:var(--gravel);color:var(--gravel);}
+.chip.ch-ebike.on{background:rgba(200,255,87,.1);border-color:var(--ebike);color:var(--ebike);}
+.chip.ch-all.on{background:rgba(200,255,87,.08);border-color:var(--acc);color:var(--acc);}
+.bikes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;padding:0 1.2rem;}
+.bk-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;cursor:pointer;transition:var(--trans);position:relative;}
+.bk-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 16px 48px rgba(0,0,0,.5);}
+.bk-img{height:120px;display:flex;align-items:center;justify-content:center;font-size:3.5rem;position:relative;overflow:hidden;}
+.bk-img-glow{position:absolute;inset:0;opacity:.18;filter:blur(40px);}
+.bk-badge{position:absolute;top:.5rem;right:.5rem;font-size:.62rem;font-weight:700;letter-spacing:.6px;padding:.2rem .55rem;border-radius:4px;}
+.bk-fav{position:absolute;top:.5rem;left:.5rem;background:rgba(8,8,16,.6);border:1px solid var(--border2);border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;transition:var(--trans);}
+.bk-fav:hover,.bk-fav.on{background:rgba(200,255,87,.15);border-color:var(--acc);}
+.bk-body{padding:.75rem .85rem .9rem;}
+.bk-brand{font-size:.65rem;color:var(--muted);font-weight:500;letter-spacing:.8px;text-transform:uppercase;}
+.bk-name{font-size:.9rem;font-weight:700;margin:.2rem 0 .3rem;line-height:1.2;}
+.bk-price{font-family:var(--font-m);font-size:.95rem;color:var(--acc);}
+.bk-stars{color:#fbbf24;font-size:.75rem;letter-spacing:-1px;margin-top:.3rem;}
+.bk-tags{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.5rem;}
+.bk-tag{font-size:.6rem;padding:.15rem .45rem;border-radius:4px;background:var(--bg3);color:var(--muted2);border:1px solid var(--border);}
+.bk-compare{display:flex;align-items:center;gap:.4rem;margin-top:.65rem;padding-top:.6rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--muted);cursor:pointer;}
+.bk-compare input{accent-color:var(--acc);}
+
+/* BIKE MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:900;backdrop-filter:blur(8px);overflow-y:auto;}
+.modal-bg.open{display:flex;align-items:flex-start;justify-content:center;padding:1rem;}
+.modal{background:var(--card2);border:1px solid var(--border2);border-radius:var(--r2);max-width:700px;width:100%;animation:modalIn .3s ease both;}
+@keyframes modalIn{from{opacity:0;transform:scale(.95);}to{opacity:1;transform:none;}}
+.modal-hero-img{height:180px;display:flex;align-items:center;justify-content:center;font-size:7rem;position:relative;overflow:hidden;border-radius:var(--r2) var(--r2) 0 0;}
+.modal-hero-glow{position:absolute;inset:0;opacity:.2;filter:blur(60px);}
+.modal-close{position:absolute;top:.9rem;right:.9rem;background:rgba(8,8,16,.7);border:1px solid var(--border2);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem;color:var(--muted);transition:var(--trans);}
+.modal-close:hover{color:var(--txt);}
+.modal-content{padding:1.2rem 1.4rem 1.5rem;}
+.modal-brand-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;}
+.modal-brand{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.modal-badge{}
+.modal-name{font-family:var(--font-d);font-size:1.5rem;font-weight:800;line-height:1.1;margin-bottom:.4rem;}
+.modal-price-row{display:flex;align-items:center;gap:1rem;margin-bottom:1rem;}
+.modal-price{font-family:var(--font-m);font-size:1.4rem;color:var(--acc);}
+.modal-rating-row{display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--muted);}
+.modal-tabs{display:flex;gap:.1rem;border-bottom:1px solid var(--border);margin-bottom:1.1rem;}
+.mtab{background:none;border:none;color:var(--muted);font-family:var(--font-b);font-size:.8rem;padding:.55rem .9rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:var(--trans);font-weight:500;}
+.mtab.on{color:var(--acc);border-bottom-color:var(--acc);}
+.tp{display:none;}
+.tp.on{display:block;}
+.spec-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;}
+.spec-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.65rem .75rem;}
+.sl{font-size:.68rem;color:var(--muted);font-weight:500;}
+.sv{font-size:.82rem;font-weight:600;margin-top:.15rem;}
+.qual-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;}
+.ql-label{width:110px;font-size:.78rem;color:var(--muted);flex-shrink:0;}
+.ql-track{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.ql-fill{height:100%;border-radius:3px;transition:width 1s ease;}
+.ql-num{font-family:var(--font-m);font-size:.72rem;color:var(--muted);width:26px;text-align:right;}
+.comment-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.85rem;margin-bottom:.6rem;}
+.ci-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;}
+.ci-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;flex-shrink:0;}
+.ci-author{font-size:.82rem;font-weight:600;}
+.ci-date{font-size:.7rem;color:var(--muted);}
+.ci-stars{color:#fbbf24;font-size:.72rem;letter-spacing:-1px;}
+.ci-text{font-size:.82rem;color:var(--muted);line-height:1.6;}
+.add-review{margin-top:.75rem;}
+.ar-row{display:flex;gap:.6rem;margin-bottom:.5rem;}
+.ar-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.5rem .75rem;color:var(--txt);font-family:var(--font-b);font-size:.82rem;outline:none;transition:border-color .2s;}
+.ar-input:focus{border-color:var(--acc);}
+.ar-textarea{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.65rem .75rem;color:var(--txt);font-family:var(--font-b);font-size:.82rem;outline:none;resize:vertical;min-height:72px;transition:border-color .2s;margin-bottom:.5rem;}
+.ar-textarea:focus{border-color:var(--acc);}
+.btn-sm{background:var(--acc);color:#080810;border:none;border-radius:8px;padding:.45rem 1rem;font-weight:700;font-size:.78rem;cursor:pointer;font-family:var(--font-b);}
+.ext-link{display:inline-flex;align-items:center;gap:.4rem;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:.5rem .9rem;font-size:.78rem;color:var(--txt);text-decoration:none;transition:var(--trans);margin:.3rem .3rem 0 0;}
+.ext-link:hover{border-color:var(--acc);color:var(--acc);}
+
+/* ===== MAP PAGE ===== */
+.map-page{}
+.map-header{padding:1rem 1.2rem .6rem;}
+.map-type-tabs{display:flex;gap:.4rem;overflow-x:auto;padding:0 1.2rem .6rem;scrollbar-width:none;}
+.map-type-tabs::-webkit-scrollbar{display:none;}
+.mtt{background:var(--card);border:1.5px solid var(--border);border-radius:50px;padding:.35rem .9rem;font-size:.78rem;font-weight:500;cursor:pointer;white-space:nowrap;color:var(--muted);transition:var(--trans);}
+.mtt:hover{color:var(--txt);}
+.mtt.on-mtb{background:rgba(255,112,67,.1);border-color:var(--mtb);color:var(--mtb);}
+.mtt.on-road{background:rgba(87,200,255,.1);border-color:var(--road);color:var(--road);}
+.mtt.on-gravel{background:rgba(181,123,255,.1);border-color:var(--gravel);color:var(--gravel);}
+.mtt.on-all{background:rgba(200,255,87,.08);border-color:var(--acc);color:var(--acc);}
+#map{height:320px;margin:0 1.2rem;border-radius:var(--r2);border:1px solid var(--border2);overflow:hidden;}
+.gps-bar{margin:.75rem 1.2rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;}
+.gps-indicator{display:flex;align-items:center;gap:.5rem;}
+.gps-led{width:9px;height:9px;border-radius:50%;background:var(--muted2);flex-shrink:0;transition:background .3s;}
+.gps-led.on{background:var(--good);box-shadow:0 0 10px rgba(34,197,94,.6);animation:gpsP 2s infinite;}
+@keyframes gpsP{0%,100%{opacity:1;}50%{opacity:.4;}}
+.gps-coords-row{display:flex;gap:1rem;flex-wrap:wrap;flex:1;}
+.gps-coord{font-size:.72rem;}
+.gps-coord .gc-lbl{color:var(--muted);font-size:.62rem;letter-spacing:.5px;display:block;}
+.gps-coord .gc-val{font-family:var(--font-m);font-size:.75rem;}
+.btn-gps{background:var(--acc2);color:#080810;border:none;border-radius:var(--r);padding:.5rem 1rem;font-weight:700;font-size:.78rem;cursor:pointer;font-family:var(--font-b);white-space:nowrap;flex-shrink:0;transition:var(--trans);}
+.btn-gps:hover{transform:translateY(-1px);}
+
+/* ETA PANEL */
+.eta-panel{margin:0 1.2rem .75rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.8rem 1rem;display:none;}
+.eta-panel.show{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.eta-icon{font-size:1.5rem;}
+.eta-info{flex:1;}
+.eta-name{font-weight:600;font-size:.88rem;}
+.eta-meta{font-size:.75rem;color:var(--muted);margin-top:.1rem;}
+.eta-times{display:flex;gap:1rem;flex-wrap:wrap;}
+.eta-type{text-align:center;}
+.eta-type-icon{font-size:1.2rem;}
+.eta-type-label{font-size:.62rem;color:var(--muted);}
+.eta-type-time{font-family:var(--font-m);font-size:.85rem;font-weight:500;}
+.trails-list-section{padding:0 1.2rem;}
+.trails-hd{font-family:var(--font-d);font-size:1.05rem;font-weight:700;margin-bottom:.7rem;}
+.trail-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem .9rem;margin-bottom:.6rem;cursor:pointer;transition:var(--trans);display:flex;align-items:center;gap:.85rem;}
+.trail-card:hover{border-color:var(--border2);transform:translateX(3px);}
+.trail-emoji{font-size:1.7rem;flex-shrink:0;}
+.trail-info{flex:1;}
+.trail-name{font-weight:600;font-size:.88rem;}
+.trail-loc{font-size:.74rem;color:var(--muted);margin-top:.1rem;}
+.trail-metas{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.35rem;}
+.trail-meta-badge{font-size:.65rem;padding:.15rem .45rem;border-radius:4px;font-weight:600;}
+.diff-easy{background:rgba(34,197,94,.12);color:var(--good);}
+.diff-medium{background:rgba(251,191,36,.12);color:var(--ok);}
+.diff-hard{background:rgba(239,68,68,.12);color:var(--bad);}
+.diff-expert{background:rgba(181,123,255,.12);color:var(--gravel);}
+.trail-dist-badge{background:var(--bg3);color:var(--muted);font-size:.65rem;padding:.15rem .45rem;border-radius:4px;font-family:var(--font-m);}
+.btn-nav{background:rgba(87,200,255,.1);border:1px solid rgba(87,200,255,.25);color:var(--road);border-radius:8px;padding:.4rem .7rem;font-size:.72rem;font-weight:700;cursor:pointer;font-family:var(--font-b);white-space:nowrap;transition:var(--trans);}
+.btn-nav:hover{background:rgba(87,200,255,.2);}
+
+/* ===== EQUIPMENT ===== */
+.eq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.75rem;padding:0 1.2rem;}
+.eq-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;cursor:pointer;transition:var(--trans);}
+.eq-card:hover{transform:translateY(-3px);border-color:var(--border2);}
+.eq-img{height:100px;display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--bg2);position:relative;}
+.eq-img-bg{position:absolute;inset:0;opacity:.12;filter:blur(30px);}
+.eq-body{padding:.7rem .8rem .85rem;}
+.eq-brand{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+.eq-name{font-size:.85rem;font-weight:700;margin:.15rem 0 .3rem;line-height:1.2;}
+.eq-price{font-family:var(--font-m);font-size:.85rem;color:var(--acc);}
+.eq-stars{color:#fbbf24;font-size:.68rem;margin-top:.25rem;}
+.eq-tags{display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.4rem;}
+.eq-tag{font-size:.58rem;padding:.12rem .4rem;border-radius:3px;background:var(--bg3);color:var(--muted2);}
+.eq-buy{display:inline-flex;align-items:center;gap:.3rem;background:rgba(255,153,0,.12);border:1px solid rgba(255,153,0,.25);color:#ff9900;border-radius:6px;padding:.35rem .65rem;font-size:.7rem;font-weight:700;margin-top:.5rem;cursor:pointer;text-decoration:none;transition:var(--trans);}
+.eq-buy:hover{background:rgba(255,153,0,.2);}
+
+/* ===== FAVORITES ===== */
+.favs-empty{text-align:center;padding:4rem 2rem;color:var(--muted);}
+.favs-empty .fe-icon{font-size:4rem;margin-bottom:1rem;}
+
+/* ===== PROFILE ===== */
+.profile-hero{padding:2rem 1.2rem 1.5rem;text-align:center;}
+.avatar-big{width:80px;height:80px;border-radius:50%;background:var(--bg3);border:2px solid var(--acc);display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin:0 auto 1rem;}
+.profile-name{font-family:var(--font-d);font-size:1.4rem;font-weight:800;}
+.profile-level{display:inline-flex;align-items:center;gap:.4rem;background:rgba(200,255,87,.1);border:1px solid rgba(200,255,87,.25);color:var(--acc);border-radius:50px;padding:.25rem .75rem;font-size:.78rem;font-weight:600;margin-top:.35rem;}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin:1.25rem 1.2rem;}
+.ps-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem;text-align:center;}
+.ps-num{font-family:var(--font-d);font-size:1.5rem;font-weight:800;color:var(--acc);}
+.ps-lbl{font-size:.68rem;color:var(--muted);margin-top:.15rem;}
+.pref-section{padding:0 1.2rem;}
+.pref-title{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.75rem;}
+.pref-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem;margin-bottom:.5rem;}
+.pr-left{display:flex;align-items:center;gap:.7rem;}
+.pr-icon{font-size:1.2rem;}
+.pr-label{font-size:.88rem;font-weight:500;}
+.pr-sub{font-size:.72rem;color:var(--muted);margin-top:.05rem;}
+.toggle{width:44px;height:24px;background:var(--bg3);border-radius:12px;position:relative;cursor:pointer;transition:background .25s;border:1px solid var(--border2);flex-shrink:0;}
+.toggle.on{background:var(--acc);}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .25s;}
+.toggle.on::after{left:22px;}
+
+/* COMPARE BAR */
+.cmp-bar{position:fixed;bottom:65px;left:0;right:0;z-index:750;background:rgba(13,13,25,.97);border-top:1px solid var(--border2);backdrop-filter:blur(12px);padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;transform:translateY(100%);transition:transform .35s ease;}
+.cmp-bar.show{transform:translateY(0);}
+.cmp-chips{display:flex;gap:.5rem;flex:1;flex-wrap:wrap;}
+.cmp-chip{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:.3rem .65rem;font-size:.75rem;display:flex;align-items:center;gap:.4rem;}
+.cmp-chip button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;line-height:1;}
+
+/* COMPARE MODAL */
+.cmp-table-wrap{overflow-x:auto;}
+.cmp-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.cmp-table th,.cmp-table td{padding:.65rem .85rem;text-align:left;border-bottom:1px solid var(--border);}
+.cmp-table th{background:var(--bg2);color:var(--muted);font-weight:500;font-size:.75rem;}
+.cmp-table td:first-child{color:var(--muted);font-size:.78rem;}
+.cmp-table tr:last-child td,.cmp-table tr:last-child th{border-bottom:none;}
+
+/* NOTIFICATIONS */
+.notif{position:fixed;top:1rem;right:1rem;z-index:9999;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:.7rem 1rem;font-size:.82rem;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:notifIn .3s ease both;max-width:260px;}
+@keyframes notifIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:none;}}
+.notif.hide{animation:notifOut .3s ease both;}
+@keyframes notifOut{to{opacity:0;transform:translateX(20px);}}
+
+/* UTILS */
+.stars-gold{color:#fbbf24;}
+.t-mtb{color:var(--mtb);}
+.t-road{color:var(--road);}
+.t-gravel{color:var(--gravel);}
+.t-ebike{color:var(--ebike);}
+.badge-mtb{background:rgba(255,112,67,.15);color:var(--mtb);border:1px solid rgba(255,112,67,.25);}
+.badge-road{background:rgba(87,200,255,.15);color:var(--road);border:1px solid rgba(87,200,255,.25);}
+.badge-gravel{background:rgba(181,123,255,.15);color:var(--gravel);border:1px solid rgba(181,123,255,.25);}
+.badge-ebike{background:rgba(200,255,87,.1);color:var(--ebike);border:1px solid rgba(200,255,87,.2);}
+
+/* Leaflet popup dark */
+.leaflet-popup-content-wrapper{background:var(--card);border:1px solid var(--border2);border-radius:12px;color:var(--txt);box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.leaflet-popup-tip{background:var(--card);}
+
+@media(min-width:640px){
+  .bikes-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
+  .eq-grid{grid-template-columns:repeat(auto-fill,minmax(185px,1fr));}
+}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div style="text-align:center;">
+    <div class="splash-wheel">🚴</div>
+    <div class="splash-logo">VÉLO<span class="acc">VERSE</span></div>
+    <div class="splash-subtitle">L'univers complet du cyclisme</div>
+  </div>
+  <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="onboarding">
+  <div class="ob-wrap">
+    <div class="ob-card">
+      <div class="ob-progress" id="ob-prog"></div>
+
+      <!-- STEP 1 : Prénom -->
+      <div class="ob-step active" id="ob1">
+        <div class="ob-num">ÉTAPE 1 / 4</div>
+        <div class="ob-title">Bienvenue sur<br><span style="color:var(--acc)">VéloVerse</span> 🚴</div>
+        <div class="ob-sub">Pour personnaliser votre expérience, quelques questions rapides.</div>
+        <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:.4rem;">Votre prénom</label>
+        <input class="ob-input" id="ob-name" placeholder="Ex: Alexandre" maxlength="30">
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn-acc" onclick="obNext(1)">Continuer →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 : Type de cycliste -->
+      <div class="ob-step" id="ob2">
+        <div class="ob-num">ÉTAPE 2 / 4</div>
+        <div class="ob-title">Votre discipline <span style="color:var(--acc)">préférée</span></div>
+        <div class="ob-sub">Vous pouvez en choisir plusieurs.</div>
+        <div class="ob-options">
+          <div class="ob-opt" data-v="mtb" onclick="obToggle(this)"><div class="ob-opt-icon">🏔</div><div class="ob-opt-label">VTT</div></div>
+          <div class="ob-opt" data-v="road" onclick="obToggle(this)"><div class="ob-opt-icon">🛣</div><div class="ob-opt-label">Route</div></div>
+          <div class="ob-opt" data-v="gravel" onclick="obToggle(this)"><div class="ob-opt-icon">🌿</div><div class="ob-opt-label">Gravel</div></div>
+          <div class="ob-opt" data-v="ebike" onclick="obToggle(this)"><div class="ob-opt-icon">⚡</div><div class="ob-opt-label">E-Bike</div></div>
+          <div class="ob-opt" data-v="urban" onclick="obToggle(this)"><div class="ob-opt-icon">🏙</div><div class="ob-opt-label">Urbain</div></div>
+          <div class="ob-opt" data-v="bmx" onclick="obToggle(this)"><div class="ob-opt-icon">🏅</div><div class="ob-opt-label">BMX</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <button class="btn-ghost" onclick="obStep(1)">← Retour</button>
+          <button class="btn-acc" onclick="obNext(2)">Continuer →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 : Niveau -->
+      <div class="ob-step" id="ob3">
+        <div class="ob-num">ÉTAPE 3 / 4</div>
+        <div class="ob-title">Votre <span style="color:var(--acc)">niveau</span></div>
+        <div class="ob-sub">Pour adapter les recommandations.</div>
+        <div class="ob-options">
+          <div class="ob-opt" data-v="débutant" onclick="obSingle(this,'lvl')"><div class="ob-opt-icon">🌱</div><div class="ob-opt-label">Débutant</div></div>
+          <div class="ob-opt" data-v="intermédiaire" onclick="obSingle(this,'lvl')"><div class="ob-opt-icon">🚴</div><div class="ob-opt-label">Intermédiaire</div></div>
+          <div class="ob-opt" data-v="avancé" onclick="obSingle(this,'lvl')"><div class="ob-opt-icon">🏆</div><div class="ob-opt-label">Avancé</div></div>
+          <div class="ob-opt" data-v="pro" onclick="obSingle(this,'lvl')"><div class="ob-opt-icon">⭐</div><div class="ob-opt-label">Pro / Compétition</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <button class="btn-ghost" onclick="obStep(2)">← Retour</button>
+          <button class="btn-acc" onclick="obNext(3)">Continuer →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4 : Budget -->
+      <div class="ob-step" id="ob4">
+        <div class="ob-num">ÉTAPE 4 / 4</div>
+        <div class="ob-title">Votre <span style="color:var(--acc)">budget vélo</span></div>
+        <div class="ob-sub">Pour filtrer les recommandations automatiquement.</div>
+        <div class="ob-options">
+          <div class="ob-opt" data-v="500" onclick="obSingle(this,'budget')"><div class="ob-opt-icon">💶</div><div class="ob-opt-label">Jusqu'à 500€</div></div>
+          <div class="ob-opt" data-v="2000" onclick="obSingle(this,'budget')"><div class="ob-opt-icon">💰</div><div class="ob-opt-label">500€ – 2 000€</div></div>
+          <div class="ob-opt" data-v="5000" onclick="obSingle(this,'budget')"><div class="ob-opt-icon">💎</div><div class="ob-opt-label">2 000€ – 5 000€</div></div>
+          <div class="ob-opt" data-v="99999" onclick="obSingle(this,'budget')"><div class="ob-opt-icon">🚀</div><div class="ob-opt-label">Pas de limite</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:.5rem;">
+          <button class="btn-ghost" onclick="obStep(3)">← Retour</button>
+          <button class="btn-acc" onclick="obFinish()">Commencer 🚴</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">VéloVerse</div>
+    <div class="topbar-actions">
+      <div class="icon-btn" onclick="showNotif('🔔 Nouvelle sortie recommandée près de chez vous !')">🔔</div>
+      <div class="icon-btn" onclick="showPage('profile')">👤</div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="page active" id="page-home">
+    <div class="home-hero">
+      <div class="hero-bg"></div>
+      <div class="hero-greeting" id="h-greeting">Bonjour</div>
+      <div class="hero-name" id="h-name">Bienvenue <span class="acc">cycliste</span> 👋</div>
+      <div class="hero-weather-pill" onclick="showPage('meteo')" id="h-weather-pill">
+        <span id="h-wpill-icon">⛅</span>
+        <span class="w-temp-pill" id="h-wpill-temp">—°C</span>
+        <span style="color:var(--muted);font-size:.75rem;" id="h-wpill-desc">Chargement...</span>
+        <span style="color:var(--muted);font-size:.72rem;">→ Météo vélo</span>
+      </div>
+      <div class="quick-stats">
+        <div class="qs-card" style="--c:var(--acc)"><div class="qs-num" id="qs-bikes">9</div><div class="qs-label">Vélos catalogués</div></div>
+        <div class="qs-card" style="--c:var(--acc2)"><div class="qs-num" id="qs-favs">0</div><div class="qs-label">Favoris</div></div>
+        <div class="qs-card" style="--c:var(--acc3)"><div class="qs-num">9</div><div class="qs-label">Spots cartographiés</div></div>
+      </div>
+    </div>
+
+    <!-- Activity types quick -->
+    <div class="section-hd"><span class="section-title">Vos disciplines</span></div>
+    <div class="h-scroll" id="home-disciplines"></div>
+
+    <div style="height:.75rem;"></div>
+    <div class="section-hd"><span class="section-title">Trending cette semaine</span><span class="section-more" onclick="showPage('bikes')">Voir tout →</span></div>
+    <div class="h-scroll" id="home-trending"></div>
+
+    <div style="height:.75rem;"></div>
+    <div class="section-hd"><span class="section-title">Équipements populaires</span><span class="section-more" onclick="showPage('equipment')">Voir tout →</span></div>
+    <div class="h-scroll" id="home-equip"></div>
+    <div style="height:1rem;"></div>
+  </div>
+
+  <!-- BIKES -->
+  <div class="page" id="page-bikes">
+    <div class="bikes-header">
+      <div style="font-family:var(--font-d);font-size:1.5rem;font-weight:800;margin-bottom:.75rem;">Catalogue <span style="color:var(--acc)">Vélos</span></div>
+      <div class="search-row">
+        <div class="search-wrap"><span class="si">🔍</span><input type="text" id="bike-search" placeholder="Marque, modèle..."></div>
+        <select id="sort-sel" style="background:var(--card);border:1px solid var(--border2);color:var(--muted);border-radius:var(--r);padding:.55rem .7rem;font-family:var(--font-b);font-size:.78rem;cursor:pointer;outline:none;">
+          <option value="rating">Mieux notés</option>
+          <option value="price-asc">Prix ↑</option>
+          <option value="price-desc">Prix ↓</option>
+          <option value="az">A-Z</option>
+        </select>
+      </div>
+      <div class="filter-chips">
+        <span class="chip ch-all on" id="fc-all" onclick="setF('all')">Tous</span>
+        <span class="chip ch-mtb" id="fc-mtb" onclick="setF('mtb')">🏔 VTT</span>
+        <span class="chip ch-road" id="fc-road" onclick="setF('road')">🛣 Route</span>
+        <span class="chip ch-gravel" id="fc-gravel" onclick="setF('gravel')">🌿 Gravel</span>
+        <span class="chip ch-ebike" id="fc-ebike" onclick="setF('ebike')">⚡ E-Bike</span>
+      </div>
+    </div>
+    <div class="bikes-grid" id="bikes-grid"></div>
+    <div style="height:1rem;"></div>
+  </div>
+
+  <!-- METEO -->
+  <div class="page" id="page-meteo">
+    <div style="padding:1rem 1.2rem .6rem;font-family:var(--font-d);font-size:1.5rem;font-weight:800;">Météo <span style="color:var(--acc)">Cycliste</span></div>
+
+    <!-- Weather hero -->
+    <div class="weather-hero">
+      <div class="wh-top">
+        <div class="wh-left">
+          <div class="wh-icon" id="w-icon">⛅</div>
+          <div class="wh-temp" id="w-temp">—°C</div>
+          <div class="wh-desc" id="w-desc">Chargement...</div>
+          <div class="wh-loc" id="w-loc">📍 Localisation...</div>
+        </div>
+        <div class="wh-right">
+          <div class="wr-row">Ressenti <span class="wr-val" id="w-feels">—°</span></div>
+          <div class="wr-row">Humidité <span class="wr-val" id="w-hum">—%</span></div>
+          <div class="wr-row">Précip. <span class="wr-val" id="w-precip">—mm</span></div>
+          <div class="wr-row">UV Index <span class="wr-val" id="w-uv">—</span></div>
+          <!-- Wind compass -->
+          <div class="wind-compass">
+            <div class="wind-circle">
+              <span class="wind-n">N</span><span class="wind-s">S</span>
+              <span class="wind-e">E</span><span class="wind-w">O</span>
+              <div class="wind-arrow" id="wind-arrow"></div>
+            </div>
+          </div>
+          <div style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:.2rem;font-family:var(--font-m);" id="w-wind-val">— km/h</div>
+        </div>
+      </div>
+      <div class="wh-conditions">
+        <div class="wc-item">
+          <div class="wc-label">Vent</div>
+          <div class="wc-val" id="wc-wind">— km/h</div>
+          <div class="wc-bar"><div class="wc-fill" id="wc-wind-bar" style="width:0%;background:var(--acc2);"></div></div>
+        </div>
+        <div class="wc-item">
+          <div class="wc-label">Visibilité</div>
+          <div class="wc-val" id="wc-vis">— km</div>
+          <div class="wc-bar"><div class="wc-fill" id="wc-vis-bar" style="width:0%;background:var(--acc);"></div></div>
+        </div>
+        <div class="wc-item">
+          <div class="wc-label">Précipitations</div>
+          <div class="wc-val" id="wc-prec">— mm</div>
+          <div class="wc-bar"><div class="wc-fill" id="wc-prec-bar" style="width:0%;background:var(--acc3);"></div></div>
+        </div>
+        <div class="wc-item">
+          <div class="wc-label">Humidité</div>
+          <div class="wc-val" id="wc-hum">—%</div>
+          <div class="wc-bar"><div class="wc-fill" id="wc-hum-bar" style="width:0%;background:var(--acc4);"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hourly forecast -->
+    <div style="padding:.6rem 1.2rem .3rem;font-family:var(--font-d);font-size:.95rem;font-weight:700;">Prévisions heure par heure</div>
+    <div class="hourly-scroll" id="hourly-scroll"></div>
+
+    <!-- Bike conditions -->
+    <div class="bike-cond-table">
+      <div class="bct-header">Conditions par discipline 🚲</div>
+      <div id="bike-conditions"></div>
+    </div>
+
+    <div style="height:1rem;"></div>
+  </div>
+
+  <!-- MAP -->
+  <div class="page" id="page-map">
+    <div class="map-header">
+      <div style="font-family:var(--font-d);font-size:1.5rem;font-weight:800;margin-bottom:.5rem;">Carte & <span style="color:var(--acc)">GPS</span></div>
+      <div class="map-type-tabs" id="map-type-tabs">
+        <span class="mtt on-all" id="mt-all" onclick="setMapF('all')">Tous</span>
+        <span class="mtt" id="mt-mtb" onclick="setMapF('mtb')">🏔 VTT</span>
+        <span class="mtt" id="mt-road" onclick="setMapF('road')">🛣 Route</span>
+        <span class="mtt" id="mt-gravel" onclick="setMapF('gravel')">🌿 Gravel</span>
+        <span class="mtt" id="mt-easy" onclick="setMapF('easy')">🟢 Facile</span>
+        <span class="mtt" id="mt-hard" onclick="setMapF('hard')">🔴 Difficile</span>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div class="gps-bar">
+      <div class="gps-indicator">
+        <div class="gps-led" id="gps-led"></div>
+        <div>
+          <div style="font-size:.82rem;font-weight:600;" id="gps-title">GPS inactif</div>
+          <div style="font-size:.68rem;color:var(--muted);">Appuyez pour activer</div>
+        </div>
+      </div>
+      <div class="gps-coords-row" id="gps-coords-row">
+        <div class="gps-coord"><span class="gc-lbl">LAT</span><span class="gc-val" id="gps-lat">—</span></div>
+        <div class="gps-coord"><span class="gc-lbl">LON</span><span class="gc-val" id="gps-lon">—</span></div>
+        <div class="gps-coord"><span class="gc-lbl">PRÉCISION</span><span class="gc-val" id="gps-acc">—</span></div>
+        <div class="gps-coord"><span class="gc-lbl">VITESSE</span><span class="gc-val" id="gps-speed">—</span></div>
+      </div>
+      <button class="btn-gps" onclick="activateGPS()">📍 Ma position</button>
+    </div>
+
+    <!-- ETA Panel -->
+    <div class="eta-panel" id="eta-panel">
+      <div class="eta-icon">🗺</div>
+      <div class="eta-info">
+        <div class="eta-name" id="eta-name">—</div>
+        <div class="eta-meta" id="eta-meta">—</div>
+      </div>
+      <div class="eta-times" id="eta-times"></div>
+      <button onclick="document.getElementById('eta-panel').classList.remove('show')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;">✕</button>
+    </div>
+
+    <div class="trails-list-section">
+      <div class="trails-hd" id="trails-hd">Itinéraires</div>
+      <div id="trails-list"></div>
+    </div>
+    <div style="height:1rem;"></div>
+  </div>
+
+  <!-- EQUIPMENT -->
+  <div class="page" id="page-equipment">
+    <div style="padding:1rem 1.2rem .6rem;">
+      <div style="font-family:var(--font-d);font-size:1.5rem;font-weight:800;margin-bottom:.75rem;">Équipements <span style="color:var(--acc)">& Accessoires</span></div>
+      <div class="filter-chips" id="eq-cats"></div>
+    </div>
+    <div class="eq-grid" id="eq-grid"></div>
+    <div style="height:1rem;"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="page-profile">
+    <div class="profile-hero">
+      <div class="avatar-big" id="p-avatar">🚴</div>
+      <div class="profile-name" id="p-name">Cycliste</div>
+      <div><span class="profile-level" id="p-level">🌱 Débutant</span></div>
+    </div>
+    <div class="profile-stats" id="profile-stats">
+      <div class="ps-card"><div class="ps-num" id="ps-favs">0</div><div class="ps-lbl">Favoris</div></div>
+      <div class="ps-card"><div class="ps-num">9</div><div class="ps-lbl">Spots</div></div>
+      <div class="ps-card"><div class="ps-num" id="ps-disciplines">0</div><div class="ps-lbl">Disciplines</div></div>
+    </div>
+    <div class="pref-section">
+      <div class="pref-title" style="margin-bottom:.5rem;">MES DISCIPLINES</div>
+      <div id="p-disciplines-list" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;"></div>
+      <div class="pref-title">PRÉFÉRENCES</div>
+      <div class="pref-row">
+        <div class="pr-left"><div class="pr-icon">🌙</div><div><div class="pr-label">Mode sombre</div><div class="pr-sub">Interface sombre activée</div></div></div>
+        <div class="toggle on" id="t-dark" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="pref-row">
+        <div class="pr-left"><div class="pr-icon">🔔</div><div><div class="pr-label">Notifications météo</div><div class="pr-sub">Alertes conditions idéales</div></div></div>
+        <div class="toggle on" id="t-notif" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="pref-row">
+        <div class="pr-left"><div class="pr-icon">📍</div><div><div class="pr-label">Localisation auto</div><div class="pr-sub">Météo et spots locaux</div></div></div>
+        <div class="toggle" id="t-loc" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="pref-row">
+        <div class="pr-left"><div class="pr-icon">🚀</div><div><div class="pr-label">Unités métriques</div><div class="pr-sub">km/h, km, °C</div></div></div>
+        <div class="toggle on" id="t-metric" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div style="height:.75rem;"></div>
+      <div class="pref-title">COMPTE</div>
+      <div class="pref-row" style="cursor:pointer;" onclick="resetProfile()">
+        <div class="pr-left"><div class="pr-icon">🔄</div><div><div class="pr-label">Réinitialiser le profil</div><div class="pr-sub">Recommencer l'onboarding</div></div></div>
+        <span style="color:var(--muted);font-size:.85rem;">→</span>
+      </div>
+    </div>
+    <div style="height:1rem;"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="nav">
+    <div class="nav-item active" onclick="showPage('home')" id="nav-home"><div class="ni">🏠</div><div class="nl">Accueil</div></div>
+    <div class="nav-item" onclick="showPage('bikes')" id="nav-bikes"><div class="ni">🚲</div><div class="nl">Vélos</div></div>
+    <div class="nav-item" onclick="showPage('meteo')" id="nav-meteo"><div class="ni">🌤</div><div class="nl">Météo</div></div>
+    <div class="nav-item" onclick="showPage('map')" id="nav-map"><div class="ni">🗺</div><div class="nl">Carte</div></div>
+    <div class="nav-item" onclick="showPage('equipment')" id="nav-equipment"><div class="ni">🛠</div><div class="nl">Équip.</div></div>
+  </div>
+
+  <!-- COMPARE BAR -->
+  <div class="cmp-bar" id="cmp-bar">
+    <div style="font-size:.75rem;color:var(--muted);white-space:nowrap;">⚖️ Comparer</div>
+    <div class="cmp-chips" id="cmp-chips"></div>
+    <button class="btn-acc" style="padding:.45rem 1rem;font-size:.78rem;margin:0;" onclick="openCompare()">Comparer ↗</button>
+    <button onclick="clearCompare()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:.35rem .6rem;cursor:pointer;font-size:.75rem;font-family:var(--font-b);">Effacer</button>
+  </div>
+</div>
+
+<!-- BIKE MODAL -->
+<div class="modal-bg" id="bike-modal" onclick="if(event.target===this)closeBikeModal()">
+  <div class="modal">
+    <div class="modal-hero-img" id="m-hero">
+      <div class="modal-hero-glow" id="m-glow"></div>
+      <span id="m-icon" style="position:relative;z-index:1;font-size:6rem;"></span>
+      <button class="modal-close" onclick="closeBikeModal()">✕</button>
+    </div>
+    <div class="modal-content">
+      <div class="modal-brand-row">
+        <div class="modal-brand" id="m-brand"></div>
+        <span class="bk-badge" id="m-badge" style="font-size:.62rem;font-weight:700;letter-spacing:.5px;padding:.2rem .55rem;border-radius:4px;"></span>
+      </div>
+      <div class="modal-name" id="m-name"></div>
+      <div class="modal-price-row">
+        <div class="modal-price" id="m-price"></div>
+        <div class="modal-rating-row"><span id="m-stars" class="stars-gold"></span><span id="m-rating" style="color:var(--muted);"></span></div>
+      </div>
+      <div class="modal-tabs">
+        <button class="mtab on" onclick="switchMTab('specs')">Specs</button>
+        <button class="mtab" onclick="switchMTab('quality')">Qualité</button>
+        <button class="mtab" onclick="switchMTab('reviews')">Avis</button>
+        <button class="mtab" onclick="switchMTab('links')">Acheter</button>
+      </div>
+      <div class="tp on" id="tp-specs"><div class="spec-grid" id="m-specs"></div></div>
+      <div class="tp" id="tp-quality"><div id="m-quality"></div></div>
+      <div class="tp" id="tp-reviews">
+        <div id="m-comments"></div>
+        <div class="add-review">
+          <div class="ar-row">
+            <input class="ar-input" id="ar-author" placeholder="Votre pseudo...">
+            <div id="ar-stars" style="display:flex;gap:4px;align-items:center;"></div>
+          </div>
+          <textarea class="ar-textarea" id="ar-text" placeholder="Votre avis..."></textarea>
+          <div style="display:flex;justify-content:flex-end;"><button class="btn-sm" onclick="submitReview()">Publier</button></div>
+        </div>
+      </div>
+      <div class="tp" id="tp-links">
+        <div style="color:var(--muted);font-size:.82rem;margin-bottom:.75rem;">Retrouvez ce vélo chez nos partenaires :</div>
+        <div id="m-links"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE MODAL -->
+<div class="modal-bg" id="cmp-modal" onclick="if(event.target===this)document.getElementById('cmp-modal').classList.remove('open')">
+  <div class="modal" style="max-width:750px;">
+    <div style="padding:1.2rem 1.4rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+      <div style="font-family:var(--font-d);font-size:1.2rem;font-weight:800;">Comparaison</div>
+      <button class="modal-close" style="position:static;" onclick="document.getElementById('cmp-modal').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:1rem 1.2rem;" class="cmp-table-wrap"><table class="cmp-table" id="cmp-table"></table></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const BIKES=[
+  {id:1,brand:'Trek',name:'Fuel EX 9.8 GX',type:'mtb',price:5499,icon:'🟠',emoji:'🚵',rating:4.8,rc:42,weight:'13.8 kg',frame:'OCLV Mountain Carbon',fork:'Fox Factory 36',brakes:'Shimano XT',gears:'SRAM GX Eagle 12v',susp:'Full sus 130mm',wheel:'29"',tags:['trail','xc','carbone'],desc:"Le Trek Fuel EX est la référence trail par excellence. Sa géométrie progressive, son amortisseur Fox et son cadre carbone OCLV offrent des performances exceptionnelles sur tous les terrains.",quality:{Légèreté:82,Rigidité:90,Confort:87,Maniabilité:88,Durabilité:92,Rapport_Q_P:80},links:[{name:'Amazon',url:'https://www.amazon.fr/s?k=Trek+Fuel+EX+9.8',icon:'📦'},{name:'Alltricks',url:'https://www.alltricks.fr',icon:'🛒'},{name:'Probikeshop',url:'https://www.probikeshop.fr',icon:'🚲'}],comments:[{author:'AlexRider',col:'#ff7043',date:'12 mai 2025',r:5,txt:'Vélo incroyable sur les Alpes. Rigidité exceptionnelle, fourche Fox impeccable.'},{author:'MarieVTT',col:'#57c8ff',date:'3 avr 2025',r:5,txt:'Parfait pour le trail technique. Direction très précise, confort au rendez-vous.'}]},
+  {id:2,brand:'Specialized',name:'Stumpjumper EVO Expert',type:'mtb',price:6299,icon:'🔴',emoji:'⛰',rating:4.9,rc:67,weight:'13.5 kg',frame:'M5 Alloy / FACT Carbon',fork:'Fox Factory 36 GRIP2',brakes:'SRAM Code RSC',gears:'SRAM GX Eagle 12v',susp:'Full sus 150mm',wheel:'29"',tags:['enduro','trail','aggressive'],desc:"Le Stumpjumper EVO redéfinit le trail avec sa géométrie audacieuse et ses 150mm de débattement. Outil redoutable sur les descentes les plus engagées.",quality:{Légèreté:85,Rigidité:92,Confort:90,Maniabilité:94,Durabilité:91,Rapport_Q_P:78},links:[{name:'Amazon',url:'https://www.amazon.fr/s?k=Specialized+Stumpjumper+EVO',icon:'📦'},{name:'Specialized.com',url:'https://www.specialized.com',icon:'🚲'}],comments:[{author:'DirtJumper99',col:'#b57bff',date:'28 mai 2025',r:5,txt:'Le meilleur VTT que j\'ai eu. Descente incroyable, montée efficace.'},{author:'XCRacer',col:'#c8ff57',date:'15 mars 2025',r:4,txt:'Légèrement lourd en XC pur, mais sur le trail il est redoutable.'}]},
+  {id:3,brand:'Canyon',name:'Spectral 125 CF 8',type:'mtb',price:3299,icon:'⚫',emoji:'🏔',rating:4.6,rc:31,weight:'14.2 kg',frame:'Carbon Fiber',fork:'RockShox Pike RCT3',brakes:'Shimano SLX',gears:'Shimano SLX 12v',susp:'Full sus 125mm',wheel:'29"/27.5"',tags:['trail','polyvalent','carbone'],desc:"Le Canyon Spectral offre le meilleur rapport qualité-prix du marché. Cadre carbone, composants haut de gamme à un prix compétitif. La recette Canyon toujours efficace.",quality:{Légèreté:80,Rigidité:86,Confort:84,Maniabilité:85,Durabilité:88,Rapport_Q_P:95},links:[{name:'Canyon.com',url:'https://www.canyon.com',icon:'🚲'},{name:'Amazon',url:'https://www.amazon.fr/s?k=Canyon+Spectral',icon:'📦'}],comments:[{author:'CyclomanAlex',col:'#22c55e',date:'5 mai 2025',r:5,txt:'Rapport qualité-prix imbattable. Cadre carbone à ce budget c\'est incroyable.'},{author:'TrailHunter',col:'#ff7043',date:'20 avr 2025',r:4,txt:'Très bon vélo. Fourche à upgrader pour les spots engagés.'}]},
+  {id:4,brand:'Pinarello',name:'Dogma F Dura-Ace Di2',type:'road',price:11999,icon:'🔵',emoji:'🚴',rating:4.9,rc:28,weight:'6.8 kg',frame:'Torayca T1100 1K Carbon',fork:'Pinarello Carbon',brakes:'Shimano Dura-Ace Di2',gears:'Shimano Dura-Ace Di2 12v',susp:'—',wheel:'700c Bora WTO 45',tags:['pro','aéro','légèreté'],desc:"Le Pinarello Dogma F est le vélo des champions, utilisé sur le Tour de France. Le sommet de la technologie route. Aérodynamique, rigide et incroyablement léger.",quality:{Légèreté:98,Rigidité:97,Confort:72,Maniabilité:96,Durabilité:89,Rapport_Q_P:60},links:[{name:'Amazon',url:'https://www.amazon.fr/s?k=Pinarello+Dogma+F',icon:'📦'},{name:'Pinarello.com',url:'https://www.pinarello.com',icon:'🚲'},{name:'Probikeshop',url:'https://www.probikeshop.fr',icon:'🛒'}],comments:[{author:'ProRoads',col:'#57c8ff',date:'2 juin 2025',r:5,txt:'Rien ne lui résiste. Chaque euro est justifié. Sensations uniques.'},{author:'CyclisteAmateur',col:'#c8ff57',date:'11 mai 2025',r:5,txt:'Le graal pour un amateur éclairé. La rigidité en relance est incomparable.'}]},
+  {id:5,brand:'Colnago',name:'V4Rs Disc Super Record',type:'road',price:9800,icon:'🇮🇹',emoji:'🏅',rating:4.8,rc:19,weight:'7.0 kg',frame:'Colnago Carbon T1100',fork:'Colnago Carbon Disc',brakes:'Campagnolo Super Record EPS',gears:'Campagnolo Super Record 12v',susp:'—',wheel:'700c Bora Ultra WTO 60',tags:['italien','aéro','compétition'],desc:"L'âme du cyclisme italien incarnée dans le V4Rs. Utilisé par les plus grandes équipes WorldTour. Lignes élégantes, rigidité latérale exceptionnelle.",quality:{Légèreté:96,Rigidité:96,Confort:74,Maniabilité:94,Durabilité:91,Rapport_Q_P:65},links:[{name:'Colnago.com',url:'https://www.colnago.com',icon:'🚲'},{name:'Amazon',url:'https://www.amazon.fr/s?k=Colnago+V4Rs',icon:'📦'}],comments:[{author:'TifosoCycling',col:'#ff7043',date:'20 mai 2025',r:5,txt:'L\'art du vélo route à l\'italienne. Transmission Campa : un régal.'}]},
+  {id:6,brand:'Giant',name:'TCR Advanced Pro 1 Di2',type:'road',price:3799,icon:'🟢',emoji:'💨',rating:4.5,rc:53,weight:'7.4 kg',frame:'Advanced SL Carbon',fork:'Advanced SL Composite',brakes:'Shimano Ultegra Di2',gears:'Shimano Ultegra Di2 12v',susp:'—',wheel:'700c Giant SLR 1 42',tags:['polyvalent','rapport-qualite','endurance'],desc:"Le Giant TCR Advanced Pro 1 est le choix idéal pour le cycliste sérieux. Cadre Advanced SL, transmission Di2 et roues carbone pour un tarif compétitif.",quality:{Légèreté:88,Rigidité:89,Confort:79,Maniabilité:87,Durabilité:93,Rapport_Q_P:91},links:[{name:'Giant.com',url:'https://www.giant-bicycles.com',icon:'🚲'},{name:'Amazon',url:'https://www.amazon.fr/s?k=Giant+TCR+Advanced',icon:'📦'},{name:'Alltricks',url:'https://www.alltricks.fr',icon:'🛒'}],comments:[{author:'GrimpeurLocal',col:'#b57bff',date:'8 avr 2025',r:5,txt:'Excellent pour le cycliste amateur. Utilisé sur la Marmotte, impeccable.'},{author:'RoadWarrior',col:'#57c8ff',date:'2 mars 2025',r:4,txt:'Bon rapport qualité-prix. Di2 précieux en montagne.'}]},
+  {id:7,brand:'Cannondale',name:'Topstone Carbon 1 RLE',type:'gravel',price:4199,icon:'🌿',emoji:'🛤',rating:4.7,rc:35,weight:'8.6 kg',frame:'BallisTec Carbon',fork:'Kingpin Micro-suspension',brakes:'Shimano GRX RX820',gears:'Shimano GRX RX820 12v',susp:'Kingpin micro-sus arrière',wheel:'700c / 650b',tags:['carbone','confort','aventure'],desc:"Le Cannondale Topstone Carbon embarque le système Kingpin, micro-suspension arrière brevetée. Absorbe les vibrations sans sacrifier l'efficacité au pédalage.",quality:{Légèreté:87,Rigidité:88,Confort:94,Maniabilité:88,Durabilité:90,Rapport_Q_P:82},links:[{name:'Cannondale.com',url:'https://www.cannondale.com',icon:'🚲'},{name:'Amazon',url:'https://www.amazon.fr/s?k=Cannondale+Topstone+Carbon',icon:'📦'}],comments:[{author:'VéloAventurier',col:'#ff7043',date:'14 mai 2025',r:5,txt:'Le système Kingpin change tout sur les chemins accidentés. Confort inouï.'},{author:'GravelExplorer',col:'#c8ff57',date:'28 avr 2025',r:5,txt:'Emmené en Ecosse sur des chemins terribles : parfait.'}]},
+  {id:8,brand:'Orbea',name:'Terra H30 Gravel',type:'gravel',price:2199,icon:'🟤',emoji:'🌾',rating:4.4,rc:22,weight:'9.2 kg',frame:'Hydro-formed Aluminum',fork:'Orbea Carbon',brakes:'Shimano GRX 600',gears:'Shimano GRX 600 12v',susp:'—',wheel:'700c / 650b compat.',tags:['aventure','bikepacking','polyvalent'],desc:"L'Orbea Terra est la machine à aventures par excellence. Robuste, confortable, il accepte des pneus larges jusqu'à 45mm et s'adapte à tous les terrains.",quality:{Légèreté:78,Rigidité:82,Confort:91,Maniabilité:83,Durabilité:94,Rapport_Q_P:92},links:[{name:'Orbea.com',url:'https://www.orbea.com',icon:'🚲'},{name:'Amazon',url:'https://www.amazon.fr/s?k=Orbea+Terra',icon:'📦'}],comments:[{author:'GravelBiker',col:'#22c55e',date:'30 avr 2025',r:4,txt:'Parfait pour mes sorties gravel du week-end.'}]},
+  {id:9,brand:'Cube',name:'Reaction Hybrid Pro 750',type:'ebike',price:3899,icon:'⚡',emoji:'⚡',rating:4.3,rc:48,weight:'23.1 kg',frame:'Aluminum Superlite',fork:'RockShox 35 Gold RL',brakes:'Shimano MT420',gears:'Shimano Deore 12v',susp:'Hardtail 120mm',wheel:'29"',tags:['vae','trail','bosch'],desc:"Le Cube Reaction Hybrid Pro 750 combine la performance d'un VTT hardtail avec la puissance du moteur Bosch Performance CX. Batterie 750Wh pour une autonomie maximale.",quality:{Légèreté:55,Rigidité:82,Confort:85,Maniabilité:80,Durabilité:88,Rapport_Q_P:86},links:[{name:'Amazon',url:'https://www.amazon.fr/s?k=Cube+Reaction+Hybrid+Pro+750',icon:'📦'},{name:'Alltricks',url:'https://www.alltricks.fr',icon:'🛒'}],comments:[{author:'EBikeConverti',col:'#c8ff57',date:'9 mai 2025',r:4,txt:'Idéal domicile-travail avec du dénivelé. Batterie 750Wh dure toute la semaine.'},{author:'GrenobleVTT',col:'#b57bff',date:'22 mars 2025',r:4,txt:'Bon VAE trail. Moteur Bosch très réactif.'}]},
+];
+
+const EQUIPMENT=[
+  {id:1,brand:'Bell',name:'Super Air R MIPS',cat:'Casques',icon:'⛑',price:329,rating:4.8,tags:['MIPS','trail','ventilation'],url:'https://www.amazon.fr/s?k=Bell+Super+Air+R+MIPS'},
+  {id:2,brand:'Giro',name:'Synthe MIPS II',cat:'Casques',icon:'🪖',price:289,rating:4.7,tags:['route','léger','aéro'],url:'https://www.amazon.fr/s?k=Giro+Synthe+MIPS'},
+  {id:3,brand:'POC',name:'Ventral Air MIPS',cat:'Casques',icon:'🏁',price:245,rating:4.6,tags:['route','MIPS','ventilation'],url:'https://www.amazon.fr/s?k=POC+Ventral+Air+MIPS'},
+  {id:4,brand:'Shimano',name:'XC902E S-Phyre',cat:'Chaussures',icon:'👟',price:399,rating:4.9,tags:['compétition','BOA','carbone'],url:'https://www.amazon.fr/s?k=Shimano+XC902E'},
+  {id:5,brand:'Giro',name:'Empire SLX',cat:'Chaussures',icon:'👞',price:329,rating:4.7,tags:['route','carbone','premium'],url:'https://www.amazon.fr/s?k=Giro+Empire+SLX'},
+  {id:6,brand:'Five Ten',name:'Trailcross LT',cat:'Chaussures',icon:'🥾',price:169,rating:4.5,tags:['vtt','clipless','all-mountain'],url:'https://www.amazon.fr/s?k=Five+Ten+Trailcross'},
+  {id:7,brand:'Garmin',name:'Edge 1050',cat:'GPS',icon:'📱',price:699,rating:4.8,tags:['navigation','live-track','cartes'],url:'https://www.amazon.fr/s?k=Garmin+Edge+1050'},
+  {id:8,brand:'Wahoo',name:'Elemnt Bolt V2',cat:'GPS',icon:'📡',price:329,rating:4.6,tags:['compact','aero','wifi'],url:'https://www.amazon.fr/s?k=Wahoo+Elemnt+Bolt+V2'},
+  {id:9,brand:'Rapha',name:'Pro Team Bib Shorts',cat:'Vêtements',icon:'🩲',price:235,rating:4.8,tags:['route','endurance','chamois'],url:'https://www.amazon.fr/s?k=Rapha+Pro+Team+Bib+Shorts'},
+  {id:10,brand:'Fox',name:'Defend Shorts',cat:'Vêtements',icon:'🩳',price:89,rating:4.5,tags:['vtt','protection','trail'],url:'https://www.amazon.fr/s?k=Fox+Defend+Shorts'},
+  {id:11,brand:'Assos',name:'Mille GT Bib Shorts C2',cat:'Vêtements',icon:'🧤',price:279,rating:4.9,tags:['route','premium','haut-de-gamme'],url:'https://www.amazon.fr/s?k=Assos+Mille+GT'},
+  {id:12,brand:'Camelbak',name:'M.U.L.E. Pro 14',cat:'Sacs',icon:'🎒',price:145,rating:4.6,tags:['vtt','hydratation','2.5L'],url:'https://www.amazon.fr/s?k=Camelbak+MULE+Pro+14'},
+  {id:13,brand:'Lezyne',name:'Micro Drive 1000XL',cat:'Éclairage',icon:'🔦',price:79,rating:4.5,tags:['1000lm','recharge','compact'],url:'https://www.amazon.fr/s?k=Lezyne+Micro+Drive+1000XL'},
+  {id:14,brand:'Maxxis',name:'Minion DHF 2.5 EXO+',cat:'Pneus',icon:'⭕',price:79,rating:4.9,tags:['enduro','grip','descente'],url:'https://www.amazon.fr/s?k=Maxxis+Minion+DHF+2.5'},
+  {id:15,brand:'Continental',name:'GP 5000 S TR',cat:'Pneus',icon:'🔘',price:69,rating:4.8,tags:['route','tubeless','légèreté'],url:'https://www.amazon.fr/s?k=Continental+GP+5000+S+TR'},
+  {id:16,brand:'Oakley',name:'Radar EV Path Prizm',cat:'Lunettes',icon:'🕶',price:199,rating:4.8,tags:['route','vtt','photochromique'],url:'https://www.amazon.fr/s?k=Oakley+Radar+EV+Path'},
+];
+
+const TRAILS=[
+  {id:1,name:'Forêt de Meudon — Singletrack VTT',lat:48.797,lon:2.230,type:'mtb',diff:'medium',dist:'18 km',dplus:'+380m',desc:'Réseau de sentiers techniques en forêt. Parfait pour le VTT enduro.'},
+  {id:2,name:'Versailles → Rambouillet',lat:48.804,lon:2.120,type:'road',diff:'easy',dist:'52 km',dplus:'+280m',desc:'Belle sortie route depuis Versailles. Routes calmes, peu de circulation.'},
+  {id:3,name:'Vallée de Chevreuse — Gravel',lat:48.707,lon:2.023,type:'gravel',diff:'medium',dist:'35 km',dplus:'+520m',desc:'Mélange de chemins et petites routes à travers la Vallée de Chevreuse.'},
+  {id:4,name:'Coulée verte du Val de Marne',lat:48.817,lon:2.297,type:'road',diff:'easy',dist:'15 km',dplus:'+45m',desc:'Piste cyclable sécurisée idéale pour tous niveaux et familles.'},
+  {id:5,name:'Parc de Saint-Cloud — Flow Trail',lat:48.840,lon:2.211,type:'mtb',diff:'easy',dist:'8 km',dplus:'+180m',desc:'Sentier VTT accessible pour tous niveaux avec quelques portions techniques.'},
+  {id:6,name:'Route des Crêtes — Essonne',lat:48.620,lon:2.285,type:'road',diff:'hard',dist:'78 km',dplus:'+850m',desc:'Sortie longue distance avec du dénivelé. Réservée aux cyclistes entraînés.'},
+  {id:7,name:'Bois de Boulogne — Anneau cycliste',lat:48.868,lon:2.240,type:'road',diff:'easy',dist:'14 km',dplus:'+120m',desc:"Anneau cycliste sécurisé au cœur du Bois de Boulogne."},
+  {id:8,name:'Rambouillet — Enduro Trail',lat:48.657,lon:1.831,type:'mtb',diff:'hard',dist:'28 km',dplus:'+620m',desc:'Terrain enduro engagé. Racines et rochers garantis.'},
+  {id:9,name:'Gravel des Yvelines',lat:48.755,lon:1.958,type:'gravel',diff:'medium',dist:'44 km',dplus:'+480m',desc:"Itinéraire gravel varié à travers les Yvelines."},
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let userProfile={name:'Cycliste',disciplines:[],level:'débutant',budget:99999};
+let favorites=JSON.parse(localStorage.getItem('vv2-favs')||'[]');
+let compareList=[];
+let activeFilter='all';
+let mapFilter='all';
+let mapInst=null,markers=[],userMarker=null;
+let openBikeId=null,reviewRating=5;
+let weatherData=null;
+let currentLat=48.8566,currentLon=2.3522;
+let equipCat='Tous';
+
+// ============================================================
+// BOOT
+// ============================================================
+window.onload=function(){
+  setTimeout(()=>{
+    const s=document.getElementById('splash');
+    s.classList.add('hide');
+    setTimeout(()=>{
+      s.style.display='none';
+      const saved=localStorage.getItem('vv2-profile');
+      if(saved){
+        userProfile=JSON.parse(saved);
+        startApp();
+      } else {
+        document.getElementById('onboarding').style.display='block';
+        updateObProgress();
+      }
+    },600);
+  },2600);
+};
+
+// ============================================================
+// ONBOARDING
+// ============================================================
+let obCurrentStep=1;
+let obSelections={disciplines:[],lvl:'',budget:''};
+
+function updateObProgress(){
+  const p=document.getElementById('ob-prog');
+  p.innerHTML=[1,2,3,4].map(i=>`<div class="ob-dot ${i<=obCurrentStep?'done':''}"></div>`).join('');
+}
+
+function obStep(n){
+  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ob'+n).classList.add('active');
+  obCurrentStep=n;
+  updateObProgress();
+}
+
+function obNext(from){
+  if(from===1){
+    const v=document.getElementById('ob-name').value.trim();
+    if(!v){showNotif('⚠️ Entrez votre prénom pour continuer.');return;}
+    userProfile.name=v;
+  }
+  if(from===2&&obSelections.disciplines.length===0){showNotif('⚠️ Choisissez au moins une discipline.');return;}
+  if(from===3&&!obSelections.lvl){showNotif('⚠️ Sélectionnez votre niveau.');return;}
+  obStep(from+1);
+}
+
+function obToggle(el){
+  el.classList.toggle('sel');
+  const v=el.dataset.v;
+  if(obSelections.disciplines.includes(v)) obSelections.disciplines=obSelections.disciplines.filter(x=>x!==v);
+  else obSelections.disciplines.push(v);
+}
+
+function obSingle(el,key){
+  el.closest('.ob-options').querySelectorAll('.ob-opt').forEach(o=>o.classList.remove('sel'));
+  el.classList.add('sel');
+  obSelections[key]=el.dataset.v;
+}
+
+function obFinish(){
+  if(!obSelections.budget){showNotif('⚠️ Choisissez un budget.');return;}
+  userProfile.disciplines=obSelections.disciplines;
+  userProfile.level=obSelections.lvl;
+  userProfile.budget=parseInt(obSelections.budget);
+  localStorage.setItem('vv2-profile',JSON.stringify(userProfile));
+  document.getElementById('onboarding').style.display='none';
+  startApp();
+}
+
+function resetProfile(){
+  localStorage.removeItem('vv2-profile');
+  localStorage.removeItem('vv2-favs');
+  location.reload();
+}
+
+// ============================================================
+// APP START
+// ============================================================
+function startApp(){
+  document.getElementById('app').style.display='block';
+  updateProfileUI();
+  renderHome();
+  renderBikes();
+  renderEquipment();
+  fetchWeatherAuto();
+  document.getElementById('bike-search').oninput=renderBikes;
+  document.getElementById('sort-sel').onchange=renderBikes;
+}
+
+function updateProfileUI(){
+  const icons={mtb:'🏔',road:'🛣',gravel:'🌿',ebike:'⚡',urban:'🏙',bmx:'🏅'};
+  const levelIcons={débutant:'🌱',intermédiaire:'🚴',avancé:'🏆',pro:'⭐'};
+  document.getElementById('h-name').innerHTML=`Bonjour <span class="acc">${userProfile.name}</span> 👋`;
+  document.getElementById('p-name').textContent=userProfile.name;
+  document.getElementById('p-level').textContent=`${levelIcons[userProfile.level]||'🚴'} ${userProfile.level||'cycliste'}`;
+  document.getElementById('ps-favs').textContent=favorites.length;
+  document.getElementById('ps-disciplines').textContent=userProfile.disciplines.length;
+  document.getElementById('qs-favs').textContent=favorites.length;
+  const greet=()=>{const h=new Date().getHours();return h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';};
+  document.getElementById('h-greeting').textContent=greet();
+  const dl=document.getElementById('p-disciplines-list');
+  const names={mtb:'VTT',road:'Route',gravel:'Gravel',ebike:'E-Bike',urban:'Urbain',bmx:'BMX'};
+  dl.innerHTML=(userProfile.disciplines||[]).map(d=>`<span style="background:var(--bg3);border:1px solid var(--border2);border-radius:50px;padding:.25rem .75rem;font-size:.78rem;">${icons[d]||''} ${names[d]||d}</span>`).join('');
+}
+
+function greeting(){const h=new Date().getHours();return h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';}
+
+// ============================================================
+// PAGES
+// ============================================================
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const ni=document.getElementById('nav-'+id);
+  if(ni) ni.classList.add('active');
+  if(id==='map'){setTimeout(initMap,60);renderTrails();}
+  if(id==='meteo'&&!weatherData) fetchWeatherAuto();
+  if(id==='meteo'&&weatherData) updateWeatherUI(weatherData);
+  if(id==='profile') updateProfileUI();
+}
+
+// ============================================================
+// HOME
+// ============================================================
+function renderHome(){
+  // Disciplines
+  const icons={mtb:'🏔',road:'🛣',gravel:'🌿',ebike:'⚡',urban:'🏙',bmx:'🏅',all:'🚲'};
+  const names={mtb:'VTT',road:'Route',gravel:'Gravel',ebike:'E-Bike',urban:'Urbain',bmx:'BMX'};
+  const colors={mtb:'var(--mtb)',road:'var(--road)',gravel:'var(--gravel)',ebike:'var(--ebike)',urban:'var(--urban)'};
+  const discs=userProfile.disciplines.length>0?userProfile.disciplines:['mtb','road','gravel','ebike'];
+  document.getElementById('home-disciplines').innerHTML=discs.map(d=>`<div class="act-card" onclick="setF('${d}');showPage('bikes')" style="border-color:${colors[d]||'var(--border)'}20;">
+    <div class="act-card-icon">${icons[d]||'🚲'}</div>
+    <div class="act-card-name">${names[d]||d}</div>
+    <div class="act-card-sub">Voir les vélos</div>
+    <div class="act-card-cond" style="background:var(--good);"></div>
+  </div>`).join('');
+
+  // Trending
+  const top=[...BIKES].sort((a,b)=>b.rating-a.rating).slice(0,4);
+  document.getElementById('home-trending').innerHTML=top.map(b=>`<div class="act-card" onclick="openBikeModal(${b.id})" style="min-width:160px;">
+    <div style="font-size:2.5rem;margin-bottom:.4rem;">${b.emoji}</div>
+    <div class="act-card-name" style="font-size:.82rem;">${b.brand}</div>
+    <div class="act-card-sub">${b.name.slice(0,20)}...</div>
+    <div style="color:var(--acc);font-family:var(--font-m);font-size:.82rem;margin-top:.3rem;">${b.price.toLocaleString('fr-FR')}€</div>
+  </div>`).join('');
+
+  // Equip
+  const topEq=EQUIPMENT.sort((a,b)=>b.rating-a.rating).slice(0,4);
+  document.getElementById('home-equip').innerHTML=topEq.map(e=>`<div class="act-card" style="min-width:150px;">
+    <div style="font-size:2.2rem;margin-bottom:.4rem;">${e.icon}</div>
+    <div class="act-card-name" style="font-size:.82rem;">${e.brand}</div>
+    <div class="act-card-sub">${e.name.slice(0,18)}...</div>
+    <div style="color:var(--acc);font-family:var(--font-m);font-size:.78rem;margin-top:.3rem;">${e.price}€</div>
+  </div>`).join('');
+}
+
+// ============================================================
+// BIKES
+// ============================================================
+function setF(f){
+  activeFilter=f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  const el=document.getElementById('fc-'+f);
+  if(el) el.classList.add('on');
+  renderBikes();
+}
+
+function renderBikes(){
+  const q=document.getElementById('bike-search').value.toLowerCase();
+  const sort=document.getElementById('sort-sel').value;
+  let list=BIKES.filter(b=>{
+    const mt=activeFilter==='all'||b.type===activeFilter;
+    const mq=!q||b.name.toLowerCase().includes(q)||b.brand.toLowerCase().includes(q);
+    return mt&&mq;
+  });
+  if(sort==='rating') list.sort((a,b)=>b.rating-a.rating);
+  else if(sort==='price-asc') list.sort((a,b)=>a.price-b.price);
+  else if(sort==='price-desc') list.sort((a,b)=>b.price-a.price);
+  else list.sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById('bikes-grid').innerHTML=list.map(bikeCard).join('');
+}
+
+function bikeCard(b){
+  const typeLabels={mtb:'VTT',road:'Route',gravel:'Gravel',ebike:'E-Bike'};
+  const isFav=favorites.includes(b.id);
+  const inCmp=compareList.includes(b.id);
+  const tc={mtb:'var(--mtb)',road:'var(--road)',gravel:'var(--gravel)',ebike:'var(--ebike)'};
+  return `<div class="bk-card">
+    <div class="bk-img" style="background:linear-gradient(135deg,${tc[b.type]||'#333'}11,var(--bg2));" onclick="openBikeModal(${b.id})">
+      <div class="bk-img-glow" style="background:${tc[b.type]||'#fff'};"></div>
+      <span style="font-size:3.5rem;position:relative;">${b.emoji}</span>
+      <span class="bk-badge badge-${b.type}">${typeLabels[b.type]||b.type}</span>
+      <span class="bk-fav ${isFav?'on':''}" onclick="event.stopPropagation();toggleFav(${b.id})">${isFav?'⭐':'☆'}</span>
+    </div>
+    <div class="bk-body" onclick="openBikeModal(${b.id})">
+      <div class="bk-brand">${b.brand}</div>
+      <div class="bk-name">${b.name}</div>
+      <div class="bk-price">${b.price.toLocaleString('fr-FR')} €</div>
+      <div class="bk-stars">${'★'.repeat(Math.round(b.rating))}${'☆'.repeat(5-Math.round(b.rating))} <span style="color:var(--muted);font-size:.7rem;">${b.rating}</span></div>
+      <div class="bk-tags">${b.tags.map(t=>`<span class="bk-tag">${t}</span>`).join('')}</div>
+    </div>
+    <div class="bk-compare" onclick="event.stopPropagation();toggleCompare(${b.id},!${inCmp})">
+      <input type="checkbox" ${inCmp?'checked':''} onclick="event.stopPropagation()"> Comparer
+    </div>
+  </div>`;
+}
+
+function toggleFav(id){
+  if(favorites.includes(id)) favorites=favorites.filter(f=>f!==id);
+  else favorites.push(id);
+  localStorage.setItem('vv2-favs',JSON.stringify(favorites));
+  document.getElementById('qs-favs').textContent=favorites.length;
+  document.getElementById('ps-favs').textContent=favorites.length;
+  renderBikes();
+}
+
+function toggleCompare(id,add){
+  if(add){if(compareList.length>=3){showNotif('⚠️ Maximum 3 vélos.');renderBikes();return;}if(!compareList.includes(id))compareList.push(id);}
+  else compareList=compareList.filter(c=>c!==id);
+  updateCmpBar();renderBikes();
+}
+
+function updateCmpBar(){
+  const bar=document.getElementById('cmp-bar');
+  if(compareList.length>0) bar.classList.add('show');else bar.classList.remove('show');
+  document.getElementById('cmp-chips').innerHTML=compareList.map(id=>{
+    const b=BIKES.find(x=>x.id===id);
+    return `<div class="cmp-chip">${b.emoji} ${b.brand} <button onclick="toggleCompare(${id},false)">✕</button></div>`;
+  }).join('');
+}
+
+function clearCompare(){compareList=[];updateCmpBar();renderBikes();}
+
+// ============================================================
+// BIKE MODAL
+// ============================================================
+function openBikeModal(id){
+  openBikeId=id;
+  const b=BIKES.find(x=>x.id===id);
+  const tc={mtb:'#ff7043',road:'#57c8ff',gravel:'#b57bff',ebike:'#c8ff57'};
+  const tl={mtb:'VTT',road:'Route',gravel:'Gravel',ebike:'E-Bike'};
+  document.getElementById('m-hero').style.background=`linear-gradient(135deg,${tc[b.type]||'#333'}22,var(--bg2))`;
+  document.getElementById('m-glow').style.background=tc[b.type]||'#fff';
+  document.getElementById('m-icon').textContent=b.emoji;
+  document.getElementById('m-brand').textContent=b.brand;
+  document.getElementById('m-badge').className=`bk-badge badge-${b.type}`;
+  document.getElementById('m-badge').textContent=tl[b.type]||b.type;
+  document.getElementById('m-badge').style.cssText='font-size:.62rem;font-weight:700;letter-spacing:.5px;padding:.2rem .55rem;border-radius:4px;';
+  document.getElementById('m-name').textContent=b.name;
+  document.getElementById('m-price').textContent=b.price.toLocaleString('fr-FR')+' €';
+  document.getElementById('m-stars').textContent='★'.repeat(Math.round(b.rating))+'☆'.repeat(5-Math.round(b.rating));
+  document.getElementById('m-rating').textContent=` ${b.rating}/5 (${b.rc} avis)`;
+  // Specs
+  const specs={Cadre:b.frame,Fourche:b.fork,Freins:b.brakes,Transmission:b.gears,Suspension:b.susp,Roues:b.wheel,Poids:b.weight};
+  document.getElementById('m-specs').innerHTML=Object.entries(specs).map(([k,v])=>`<div class="spec-item"><div class="sl">${k}</div><div class="sv">${v||'—'}</div></div>`).join('');
+  // Quality
+  document.getElementById('m-quality').innerHTML=Object.entries(b.quality).map(([k,v])=>`<div class="qual-row"><div class="ql-label">${k.replace(/_/g,' ')}</div><div class="ql-track"><div class="ql-fill" style="width:${v}%;background:${qColor(v)};"></div></div><div class="ql-num">${v}</div></div>`).join('');
+  renderReviews(b);
+  initReviewStars();
+  // Links
+  document.getElementById('m-links').innerHTML=b.links.map(l=>`<a class="ext-link" href="${l.url}" target="_blank">${l.icon} ${l.name} ↗</a>`).join('');
+  switchMTab('specs');
+  document.getElementById('bike-modal').classList.add('open');
+}
+
+function closeBikeModal(){document.getElementById('bike-modal').classList.remove('open');}
+
+function switchMTab(t){
+  document.querySelectorAll('.mtab').forEach((b,i)=>b.classList.toggle('on',['specs','quality','reviews','links'][i]===t));
+  document.querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tp-'+t).classList.add('on');
+}
+
+function qColor(v){return v>=90?'#22c55e':v>=75?'#c8ff57':v>=60?'#fbbf24':'#ef4444';}
+
+function renderReviews(b){
+  document.getElementById('m-comments').innerHTML=b.comments.map(c=>`<div class="comment-item">
+    <div class="ci-head">
+      <div class="ci-av" style="background:${c.col}18;color:${c.col};">${c.author.slice(0,2).toUpperCase()}</div>
+      <div><div class="ci-author">${c.author}</div><div class="ci-date">${c.date} · <span class="ci-stars">${'★'.repeat(c.r)}</span></div></div>
+    </div>
+    <div class="ci-text">${c.txt}</div>
+  </div>`).join('');
+}
+
+function initReviewStars(){
+  reviewRating=5;
+  document.getElementById('ar-stars').innerHTML=[1,2,3,4,5].map(i=>`<span style="cursor:pointer;font-size:1.3rem;color:${i<=5?'#fbbf24':'#404060'}" data-s="${i}" onclick="setRS(${i})">★</span>`).join('');
+}
+
+function setRS(r){
+  reviewRating=r;
+  document.querySelectorAll('#ar-stars span').forEach(s=>s.style.color=parseInt(s.dataset.s)<=r?'#fbbf24':'#404060');
+}
+
+function submitReview(){
+  const b=BIKES.find(x=>x.id===openBikeId);
+  const txt=document.getElementById('ar-text').value.trim();
+  if(!txt) return;
+  const author=document.getElementById('ar-author').value.trim()||'Anonyme';
+  const cols=['#ff7043','#57c8ff','#b57bff','#c8ff57','#22c55e'];
+  const now=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  b.comments.unshift({author,col:cols[Math.floor(Math.random()*cols.length)],date:now,r:reviewRating,txt});
+  b.rc++;
+  b.rating=Math.round(((b.rating*(b.rc-1)+reviewRating)/b.rc)*10)/10;
+  renderReviews(b);
+  document.getElementById('ar-text').value='';
+  document.getElementById('ar-author').value='';
+  initReviewStars();
+  showNotif('✅ Avis publié !');
+}
+
+// ============================================================
+// COMPARE
+// ============================================================
+function openCompare(){
+  if(compareList.length<2){showNotif('⚠️ Sélectionnez au moins 2 vélos.');return;}
+  const bikes=compareList.map(id=>BIKES.find(b=>b.id===id));
+  const rows=['brand','type','price','weight','frame','gears','susp','wheel','rating'];
+  const labels={brand:'Marque',type:'Type',price:'Prix',weight:'Poids',frame:'Cadre',gears:'Transmission',susp:'Suspension',wheel:'Roues',rating:'Note'};
+  const fmt=(b,k)=>{
+    if(k==='price') return b.price.toLocaleString('fr-FR')+'€';
+    if(k==='type') return {mtb:'VTT',road:'Route',gravel:'Gravel',ebike:'E-Bike'}[b.type];
+    if(k==='rating') return `${'★'.repeat(Math.round(b.rating))} ${b.rating}`;
+    return b[k]||'—';
+  };
+  const qKeys=Object.keys(bikes[0].quality);
+  document.getElementById('cmp-table').innerHTML=`
+    <thead><tr><th>Critère</th>${bikes.map(b=>`<th><div style="font-size:2rem;">${b.emoji}</div><div style="font-weight:600;font-size:.82rem;">${b.brand}</div><div style="font-size:.72rem;color:var(--muted);">${b.name.slice(0,16)}…</div></th>`).join('')}</tr></thead>
+    <tbody>
+    ${rows.map(k=>`<tr><td>${labels[k]}</td>${bikes.map(b=>`<td>${fmt(b,k)}</td>`).join('')}</tr>`).join('')}
+    <tr><td colspan="${bikes.length+1}" style="background:var(--bg2);color:var(--muted);font-size:.72rem;letter-spacing:.8px;font-weight:500;">QUALITÉ</td></tr>
+    ${qKeys.map(k=>`<tr><td>${k.replace(/_/g,' ')}</td>${bikes.map(b=>`<td><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;"><div style="width:${b.quality[k]}%;height:100%;background:${qColor(b.quality[k])};border-radius:2px;"></div></div><span style="font-size:.72rem;font-family:var(--font-m);">${b.quality[k]}</span></div></td>`).join('')}</tr>`).join('')}
+    </tbody>`;
+  document.getElementById('cmp-modal').classList.add('open');
+}
+
+// ============================================================
+// WEATHER
+// ============================================================
+const WMO={0:['☀️','Ciel dégagé'],1:['🌤','Peu nuageux'],2:['⛅','Partiellement nuageux'],3:['☁️','Couvert'],45:['🌫','Brouillard'],51:['🌦','Bruine légère'],61:['🌧','Pluie légère'],63:['🌧','Pluie modérée'],65:['🌧','Forte pluie'],71:['🌨','Neige légère'],80:['🌦','Averses'],95:['⛈','Orage']};
+
+function fetchWeatherAuto(){
+  navigator.geolocation?.getCurrentPosition(
+    pos=>{currentLat=pos.coords.latitude;currentLon=pos.coords.longitude;fetchWeather(currentLat,currentLon);},
+    ()=>fetchWeather(48.8566,2.3522)
+  );
+  fetchWeather(currentLat,currentLon);
+}
+
+function fetchWeather(lat,lon){
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode,windspeed_10m,precipitation,relativehumidity_2m,visibility,apparent_temperature,uv_index&timezone=auto&forecast_days=1`)
+    .then(r=>r.json()).then(d=>{weatherData=d;updateWeatherUI(d);}).catch(()=>{});
+  // Reverse geocode
+  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+    .then(r=>r.json()).then(d=>{
+      const city=d.address?.city||d.address?.town||d.address?.village||'Votre ville';
+      document.getElementById('w-loc').textContent='📍 '+city;
+    }).catch(()=>{});
+}
+
+function updateWeatherUI(d){
+  const cw=d.current_weather;
+  const h=d.hourly;
+  const hi=new Date().getHours();
+  const wmo=WMO[cw.weathercode]||['🌡','Variable'];
+  const temp=Math.round(cw.temperature);
+  const wind=Math.round(cw.windspeed);
+  const hum=h.relativehumidity_2m?.[hi]??'—';
+  const precip=h.precipitation?.[hi]??0;
+  const vis=h.visibility?.[hi]?Math.round(h.visibility[hi]/1000):'—';
+  const feels=h.apparent_temperature?.[hi]?Math.round(h.apparent_temperature[hi]):'—';
+  const uv=h.uv_index?.[hi]??'—';
+
+  // Home pill
+  document.getElementById('h-wpill-icon').textContent=wmo[0];
+  document.getElementById('h-wpill-temp').textContent=temp+'°C';
+  document.getElementById('h-wpill-desc').textContent=wmo[1];
+
+  // Weather page
+  document.getElementById('w-icon').textContent=wmo[0];
+  document.getElementById('w-temp').textContent=temp+'°C';
+  document.getElementById('w-desc').textContent=wmo[1];
+  document.getElementById('w-feels').textContent=feels+'°';
+  document.getElementById('w-hum').textContent=hum+'%';
+  document.getElementById('w-precip').textContent=precip.toFixed(1)+'mm';
+  document.getElementById('w-uv').textContent=uv;
+  document.getElementById('w-wind-val').textContent=wind+' km/h';
+  document.getElementById('wind-arrow').style.transform=`rotate(${cw.winddirection||0}deg)`;
+
+  // Metric bars
+  document.getElementById('wc-wind').textContent=wind+' km/h';
+  document.getElementById('wc-wind-bar').style.width=Math.min(wind/100*100,100)+'%';
+  document.getElementById('wc-vis').textContent=vis+' km';
+  document.getElementById('wc-vis-bar').style.width=Math.min((vis/20)*100,100)+'%';
+  document.getElementById('wc-prec').textContent=precip.toFixed(1)+' mm';
+  document.getElementById('wc-prec-bar').style.width=Math.min(precip/10*100,100)+'%';
+  document.getElementById('wc-hum').textContent=hum+'%';
+  document.getElementById('wc-hum-bar').style.width=Math.min(hum,100)+'%';
+
+  // Hourly
+  const now=new Date().getHours();
+  let hourHtml='';
+  for(let i=now;i<Math.min(now+12,24);i++){
+    const ht=h.temperature_2m?.[i]?Math.round(h.temperature_2m[i]):'—';
+    const hw=h.windspeed_10m?.[i]?Math.round(h.windspeed_10m[i]):'—';
+    const hwmo=WMO[h.weathercode?.[i]]||['🌡',''];
+    hourHtml+=`<div class="h-hour ${i===now?'active':''}">
+      <div class="hh-time">${String(i).padStart(2,'0')}h</div>
+      <div class="hh-icon">${hwmo[0]}</div>
+      <div class="hh-temp">${ht}°</div>
+      <div class="hh-wind">${hw}km/h</div>
+    </div>`;
+  }
+  document.getElementById('hourly-scroll').innerHTML=hourHtml;
+
+  // Bike conditions
+  updateBikeConditions(temp,wind,precip,hum,cw.weathercode,uv);
+}
+
+function updateBikeConditions(temp,wind,precip,hum,wcode,uv){
+  const isRain=[51,53,55,61,63,65,71,73,75,80,81,82,95,96,99].includes(wcode);
+  const conditions=[
+    {type:'mtb',icon:'🚵',name:'VTT / Trail',score:calcScore('mtb',temp,wind,precip,isRain)},
+    {type:'road',icon:'🚴',name:'Vélo de route',score:calcScore('road',temp,wind,precip,isRain)},
+    {type:'gravel',icon:'🌿',name:'Gravel / Cyclo-cross',score:calcScore('gravel',temp,wind,precip,isRain)},
+    {type:'ebike',icon:'⚡',name:'E-Bike / VAE',score:calcScore('ebike',temp,wind,precip,isRain)},
+    {type:'urban',icon:'🏙',name:'Urbain / Commute',score:calcScore('urban',temp,wind,precip,isRain)},
+    {type:'enduro',icon:'🏔',name:'Enduro / DH',score:calcScore('enduro',temp,wind,precip,isRain)},
+  ];
+  document.getElementById('bike-conditions').innerHTML=conditions.map(c=>{
+    const {label,cls,reason}=condLabel(c.score,c.type,temp,wind,precip,isRain);
+    return `<div class="bct-row">
+      <div class="bct-icon">${c.icon}</div>
+      <div class="bct-info">
+        <div class="bct-name">${c.name}</div>
+        <div class="bct-reason">${reason}</div>
+      </div>
+      <div class="bct-badge ${cls}"><div class="cond-dot"></div>${label}</div>
+    </div>`;
+  }).join('');
+}
+
+function calcScore(type,temp,wind,precip,isRain){
+  let s=100;
+  if(isRain) s-=type==='mtb'||type==='enduro'?20:35;
+  if(precip>2) s-=15;
+  if(wind>40) s-=type==='road'?30:15;
+  else if(wind>25) s-=type==='road'?20:8;
+  if(temp<5) s-=type==='urban'?10:20;
+  if(temp<0) s-=30;
+  if(temp>38) s-=15;
+  if(type==='road'&&isRain) s-=10;
+  if(type==='gravel'&&isRain) s+=5;
+  return Math.max(0,Math.min(100,s));
+}
+
+function condLabel(score,type,temp,wind,precip,isRain){
+  const reasons={
+    rain:'🌧 Pluie — risque de glissade',
+    cold:'🥶 Température basse',
+    wind:'💨 Vent fort — effort accru',
+    ideal:'✅ Conditions idéales pour sortir',
+    good:'👌 Bonnes conditions',
+    ok:'⚠️ Conditions moyennes',
+    hot:'🌡 Forte chaleur — hydratation essentielle',
+  };
+  let reason=reasons.ideal;
+  if(isRain) reason=reasons.rain;
+  else if(temp<5) reason=reasons.cold;
+  else if(wind>35) reason=reasons.wind;
+  else if(temp>35) reason=reasons.hot;
+  if(score>=75) return{label:'Idéal',cls:'cond-good',reason:score>=90?reasons.ideal:reasons.good};
+  if(score>=45) return{label:'Moyen',cls:'cond-ok',reason};
+  return{label:'Déconseillé',cls:'cond-bad',reason};
+}
+
+// ============================================================
+// MAP
+// ============================================================
+function initMap(){
+  if(mapInst){mapInst.invalidateSize();return;}
+  mapInst=L.map('map').setView([48.78,2.18],11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(mapInst);
+  addMarkers();
+}
+
+function mkIcon(type){
+  const c={mtb:'#ff7043',road:'#57c8ff',gravel:'#b57bff'}[type]||'#7070a0';
+  return L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-12],
+    html:`<div style="width:16px;height:16px;border-radius:50%;background:${c};border:2.5px solid rgba(255,255,255,.6);box-shadow:0 0 12px ${c}88;transition:transform .2s;"></div>`});
+}
+
+function addMarkers(){
+  markers.forEach(m=>mapInst.removeLayer(m));
+  markers=[];
+  const filtered=mapFilter==='all'?TRAILS:
+    mapFilter==='easy'?TRAILS.filter(t=>t.diff==='easy'):
+    mapFilter==='hard'?TRAILS.filter(t=>['hard','expert'].includes(t.diff)):
+    TRAILS.filter(t=>t.type===mapFilter);
+  filtered.forEach(t=>{
+    const diff={easy:'🟢 Facile',medium:'🟡 Intermédiaire',hard:'🔴 Difficile',expert:'⚫ Expert'}[t.diff];
+    const m=L.marker([t.lat,t.lon],{icon:mkIcon(t.type)}).addTo(mapInst).bindPopup(
+      `<div style="min-width:210px;font-family:Outfit,sans-serif;"><b style="font-size:.9rem;">${t.name}</b><br><span style="font-size:.75rem;color:#7070a0;">${t.desc}</span><br><div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;"><span style="background:rgba(255,255,255,.08);border-radius:4px;padding:2px 7px;font-size:.7rem;">${t.dist}</span><span style="background:rgba(255,255,255,.08);border-radius:4px;padding:2px 7px;font-size:.7rem;">${t.dplus}</span><span style="background:rgba(255,255,255,.08);border-radius:4px;padding:2px 7px;font-size:.7rem;">${diff}</span></div><div style="margin-top:8px;"><a onclick="showETA(${t.id})" style="cursor:pointer;color:#57c8ff;font-size:.75rem;font-weight:700;">🗺 Temps estimé ↗</a></div></div>`,{className:''}
+    );
+    markers.push(m);
+    m.on('click',()=>showETA(t.id));
+  });
+}
+
+function setMapF(f){
+  mapFilter=f;
+  document.querySelectorAll('.mtt').forEach(b=>{b.className='mtt';});
+  const el=document.getElementById('mt-'+f);
+  if(el) el.className=`mtt on-${f==='easy'||f==='hard'?'all':f}`;
+  addMarkers();renderTrails();
+}
+
+function activateGPS(){
+  if(!navigator.geolocation){showNotif('❌ GPS non supporté sur cet appareil.');return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const{latitude:lat,longitude:lon,accuracy:acc,speed:spd}=pos.coords;
+    currentLat=lat;currentLon=lon;
+    document.getElementById('gps-led').classList.add('on');
+    document.getElementById('gps-title').textContent='GPS actif';
+    document.getElementById('gps-lat').textContent=lat.toFixed(5);
+    document.getElementById('gps-lon').textContent=lon.toFixed(5);
+    document.getElementById('gps-acc').textContent=Math.round(acc)+'m';
+    document.getElementById('gps-speed').textContent=spd?Math.round(spd*3.6)+' km/h':'0 km/h';
+    if(!mapInst) initMap();
+    if(userMarker) mapInst.removeLayer(userMarker);
+    userMarker=L.marker([lat,lon],{icon:L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],
+      html:`<div style="width:20px;height:20px;border-radius:50%;background:#22c55e;border:3px solid white;box-shadow:0 0 16px rgba(34,197,94,.7);"></div>`})})
+      .addTo(mapInst).bindPopup('📍 Vous êtes ici').openPopup();
+    mapInst.setView([lat,lon],14);
+    fetchWeather(lat,lon);
+    showNotif('📍 Position GPS obtenue !');
+  },()=>showNotif('❌ Impossible d\'obtenir la position.'));
+}
+
+function showETA(trailId){
+  const t=TRAILS.find(x=>x.id===trailId);
+  if(!t) return;
+  const distKm=parseFloat(t.dist);
+  const speeds={mtb:18,road:28,gravel:22,ebike:25,urban:20};
+  const icons={mtb:'🚵',road:'🚴',gravel:'🌿',ebike:'⚡'};
+  const panel=document.getElementById('eta-panel');
+  document.getElementById('eta-name').textContent=t.name;
+  document.getElementById('eta-meta').textContent=`${t.dist} · ${t.dplus} · ${t.type.toUpperCase()}`;
+  const types=['mtb','road','gravel','ebike'];
+  document.getElementById('eta-times').innerHTML=types.map(tp=>{
+    const mins=Math.round(distKm/speeds[tp]*60);
+    return `<div class="eta-type"><div class="eta-type-icon">${icons[tp]||'🚲'}</div><div class="eta-type-time">${mins}min</div><div class="eta-type-label">${{mtb:'VTT',road:'Route',gravel:'Gravel',ebike:'E-Bike'}[tp]}</div></div>`;
+  }).join('');
+  panel.classList.add('show');
+}
+
+function renderTrails(){
+  const filtered=mapFilter==='all'?TRAILS:
+    mapFilter==='easy'?TRAILS.filter(t=>t.diff==='easy'):
+    mapFilter==='hard'?TRAILS.filter(t=>['hard','expert'].includes(t.diff)):
+    TRAILS.filter(t=>t.type===mapFilter);
+  document.getElementById('trails-hd').textContent=`Itinéraires (${filtered.length})`;
+  const diffMap={easy:{cls:'diff-easy',lbl:'🟢 Facile'},medium:{cls:'diff-medium',lbl:'🟡 Intermédiaire'},hard:{cls:'diff-hard',lbl:'🔴 Difficile'},expert:{cls:'diff-expert',lbl:'⚫ Expert'}};
+  const icons={mtb:'🚵',road:'🚴',gravel:'🌿'};
+  document.getElementById('trails-list').innerHTML=filtered.map(t=>`
+    <div class="trail-card" onclick="focusTrail(${t.lat},${t.lon},${t.id})">
+      <div class="trail-emoji">${icons[t.type]||'🚲'}</div>
+      <div class="trail-info">
+        <div class="trail-name">${t.name}</div>
+        <div class="trail-loc">${t.desc.slice(0,55)}…</div>
+        <div class="trail-metas">
+          <span class="trail-meta-badge ${diffMap[t.diff].cls}">${diffMap[t.diff].lbl}</span>
+          <span class="trail-dist-badge">${t.dist} · ${t.dplus}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.4rem;">
+        <button class="btn-nav" onclick="event.stopPropagation();navigate(${t.lat},${t.lon})">🧭 Y aller</button>
+        <button class="btn-nav" style="background:rgba(200,255,87,.08);border-color:rgba(200,255,87,.2);color:var(--acc);" onclick="event.stopPropagation();showETA(${t.id})">⏱ ETA</button>
+      </div>
+    </div>`).join('');
+}
+
+function focusTrail(lat,lon,id){
+  if(!mapInst) return;
+  mapInst.setView([lat,lon],14);
+  showETA(id);
+}
+
+function navigate(lat,lon){window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=bicycling`,'_blank');}
+
+// ============================================================
+// EQUIPMENT
+// ============================================================
+const EQ_CATS=['Tous','Casques','Chaussures','GPS','Vêtements','Sacs','Éclairage','Pneus','Lunettes'];
+
+function renderEquipment(){
+  document.getElementById('eq-cats').innerHTML=EQ_CATS.map(c=>`<span class="chip ${equipCat===c?'ch-all on':''}" onclick="setEqCat('${c}')">${c}</span>`).join('');
+  const list=equipCat==='Tous'?EQUIPMENT:EQUIPMENT.filter(e=>e.cat===equipCat);
+  const catColors={'Casques':'#ff7043','Chaussures':'#57c8ff','GPS':'#c8ff57','Vêtements':'#b57bff','Sacs':'#ffd166','Éclairage':'#fbbf24','Pneus':'#7070a0','Lunettes':'#22c55e'};
+  document.getElementById('eq-grid').innerHTML=list.map(e=>`
+    <div class="eq-card">
+      <div class="eq-img">
+        <div class="eq-img-bg" style="background:${catColors[e.cat]||'#fff'};"></div>
+        <span style="position:relative;font-size:3rem;">${e.icon}</span>
+      </div>
+      <div class="eq-body">
+        <div class="eq-brand">${e.brand}</div>
+        <div class="eq-name">${e.name}</div>
+        <div class="eq-price">${e.price} €</div>
+        <div class="eq-stars">${'★'.repeat(Math.round(e.rating))}${'☆'.repeat(5-Math.round(e.rating))} <span style="color:var(--muted);font-size:.65rem;">${e.rating}</span></div>
+        <div class="eq-tags">${e.tags.map(t=>`<span class="eq-tag">${t}</span>`).join('')}</div>
+        <a class="eq-buy" href="${e.url}" target="_blank">📦 Amazon ↗</a>
+      </div>
+    </div>`).join('');
+}
+
+function setEqCat(c){equipCat=c;renderEquipment();}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+function showNotif(msg){
+  const n=document.createElement('div');
+  n.className='notif';n.textContent=msg;
+  document.body.appendChild(n);
+  setTimeout(()=>{n.classList.add('hide');setTimeout(()=>n.remove(),400);},3000);
+}
+</script>
+</body>
+</html>
